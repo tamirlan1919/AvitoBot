@@ -1,2 +1,21 @@
 АндрейСуха u2i-fLLd_BKTJYO2qbkcV8cPoA 116054172
 маина u2i-0B6v8USqVwzFEk1W5YmXaQ 303088923
+
+4100117394518969.25C11A278171A9D98CF57B29E20869FE7175F8E5F0D82C642CB12B819214769229B792D693CD7A205D5D8B524294B1E710CECA73FB581A110CD748405B3A3709592F767FB683ACCE256C92453C4EA831F0E9EBA02063DF8DBA8728EE9B2A2CC60AA1EAD2AF79160F273D90F23C06E6E66B7B874261A33FD1BBA66C0A96297EAD
+
+
+    create_table_query = '''
+    CREATE TABLE IF NOT EXISTS clients (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_telegram INTEGER,
+        chat_id INTEGER,  -- Добавляем поле chat_id
+        client_id TEXT,
+        client_secret TEXT
+        token TEXT,
+        referral_link TEXT,
+        frequently_asked_questions_triggers TEXT,
+        premium_status INTEGER,  -- Теперь тип INTEGER
+        payment_link TEXT
+        test_period_end TEXT
+    );
+    '''

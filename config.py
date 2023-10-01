@@ -1,4 +1,4 @@
-from yoomoney import Authorize
+from money_cart import Authorize
 import requests
 TOKEN = '6515821471:AAFspRJMRcCFfJP8-g9WRGS02jK-aydFsBo'
 
