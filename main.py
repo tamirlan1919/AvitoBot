@@ -4,6 +4,7 @@ import requests
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.types import ParseMode
+import time
 import re
 import sqlite3
 import aiogram
@@ -35,7 +36,8 @@ import os
 from aiogram import types
 from aiogram.utils import exceptions
 from money_cart import get_sum
-
+import json
+import schedule
 from aiogram.dispatcher.filters import Command, ChatTypeFilter
 yoomoney_token = "4100117394518969.25C11A278171A9D98CF57B29E20869FE7175F8E5F0D82C642CB12B819214769229B792D693CD7A205D5D8B524294B1E710CECA73FB581A110CD748405B3A3709592F767FB683ACCE256C92453C4EA831F0E9EBA02063DF8DBA8728EE9B2A2CC60AA1EAD2AF79160F273D90F23C06E6E66B7B874261A33FD1BBA66C0A96297EAD"
 
@@ -51,6 +53,9 @@ bot = Bot(token=BOT_TOKEN)
 memory_storage = MemoryStorage()  # Инициализируем MemoryStorage
 dp = Dispatcher(bot,storage=memory_storage)
 dp.middleware.setup(LoggingMiddleware())
+sent_messages = {}
+
+
 current_page = 0
 current_page_message_id = None  # Инициализация переменной
 
@@ -64,10 +69,9 @@ image_folder = 'images/test_period'
 
 
 async def check_new_messages(message:types.Message):
-    print('dooooneeeee')
     while True:
         # Здесь вы можете добавить логику для проверки наличия новых сообщений.
-        user_id = get_clinet_id(message.chat.id)
+        user_id = get_user_id(message.chat.id)
         token = get_token(message.chat.id)
         avito_data = get_avito_unread_data(token=token, user_id=user_id)
         
@@ -159,6 +163,8 @@ async def start_group(message: types.Message):
                 test_per = cursor.fetchone()
                 cursor.execute('INSERT INTO chats (chat_id, acc_id, test_period) VALUES (?, ?, ?)', (chat_id, user_id[0], test_per[0]))
                 conn.commit()
+            else:
+                await bot.send_mes
     except:
         pass
 
@@ -228,12 +234,10 @@ async def check_vip(callback_query: types.CallbackQuery):
     user_id = callback_query.message.chat.id
     conn = sqlite3.connect('my_database.db')
     cursor = conn.cursor()
-    print(callback_query.message.chat.id)
     
     # Проверяем, есть ли значение в атрибуте "тестовый период" для данного пользователя
     cursor.execute('SELECT test_period FROM chats WHERE chat_id = ?', (user_id,))
     test_period_end = cursor.fetchone()
-    print(test_period_end)
     # Здесь предполагается, что вы извлекли дату и время окончания подписки из базы данных
     subscription_end_time = ''
     try:
@@ -248,7 +252,6 @@ async def check_vip(callback_query: types.CallbackQuery):
 
     
     current_time = datetime.datetime.now()
-    print(current_time,subscription_end_time)
     if current_time >= subscription_end_time:
         try:
             # Попробуйте удалить предыдущее сообщение с клавиатурой
@@ -350,12 +353,10 @@ async def check_money(callback_query: types.CallbackQuery):
             text += f"Тип: {recent_operation.type}\n\n"
   
         how_much = len(recent_operations)
-        print(how_much)
         subscription_end_date = get_subscription_end_date_from_database(callback_query.message.chat.id)
         if subscription_end_date is None or subscription_end_date < datetime.datetime.now():
         # Подписка истекла или отсутствует, добавьте месяц к текущей дате
             one_month_later = datetime.datetime.now() + datetime.timedelta(days=30*how_much)
-            print(f'yohoooooo {one_month_later}')
         
         # Обновите дату окончания подписки в базе данных
             update_subscription_end_date_in_database(callback_query.message.chat.id, one_month_later)
@@ -564,6 +565,32 @@ TiqAvito принимает сообщения 24 /
         reply_markup=keyboard
     )
 
+@dp.callback_query_handler(lambda callback_query: callback_query.data == 'auto_answera')
+async def auto_answera(callback_query: types.CallbackQuery):
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(types.InlineKeyboardButton(text='Показать автоответы',callback_data='r'),types.InlineKeyboardButton(text='Добавить авоответ',callback_data='add_answer'))
+    keyboard.add(types.InlineKeyboardButton(text='⬅️ Вернуться в главное меню',callback_data='back_main'))
+    await bot.edit_message_text(
+        chat_id=callback_query.message.chat.id,
+        message_id=callback_query.message.message_id,
+        text='Подтвердите',
+        reply_markup=keyboard
+    )
+
+@dp.callback_query_handler(lambda callback_query: callback_query.data == 'add_answer')
+async def add_answer(callback_query: types.CallbackQuery):
+    text = '''Выберите, в каком случае будем отправлять сообщение клиенту ⁉️ Будьте внимательны, автоответы будут применены для всех аккаунтов привязанных к боту. Если у вас несколько аккаунтов и вы вы хотите, чтобы в каждом аккаунте была своя логика. Создайте для каждого аккаунта отдельный чат в Telegram и добавьте туда бота для работы с сообщениями.'''
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(types.InlineKeyboardButton(text='На первое сообщение',callback_data='first_message'),types.InlineKeyboardButton(text='В определенный промежуток времени',callback_data='time_message'))
+    keyboard.add(types.InlineKeyboardButton(text='Триггеры',callback_data='triggers'))
+    keyboard.add(types.InlineKeyboardButton(text='⬅️ Вернуться в главное меню',callback_data='back_main'))
+    await bot.edit_message_text(
+        chat_id=callback_query.message.chat.id,
+        message_id=callback_query.message.message_id,
+        text=text,
+        reply_markup=keyboard
+    ) 
+
 @dp.callback_query_handler(lambda callback_query: callback_query.data == 'back_main')
 async def back_main(callback_query: types.CallbackQuery):
     keyboard = types.InlineKeyboardMarkup()
@@ -577,7 +604,6 @@ async def back_main(callback_query: types.CallbackQuery):
     ) 
 @dp.message_handler(commands='unread')
 async def unread_data(message: types.Message):
-    print(message)
     global current_page2
     global current_page_message_id2
     # Define the number of contacts to display per page
@@ -586,7 +612,7 @@ async def unread_data(message: types.Message):
 
     # Clear the unique_user_names set for the current page
     unique_user_names.clear()
-    user_id = get_clinet_id(message.chat.id)
+    user_id = get_user_id(message.chat.id)
     token = get_token(message.chat.id)
     avito_data = get_avito_unread_data(token=token,user_id=user_id)
 
@@ -631,7 +657,6 @@ async def unread_data(message: types.Message):
             user_id = user_data["user_id"]
             chat_id = user_data["chat_id"]
             button = types.InlineKeyboardButton(text=cleaned_user_name, callback_data=f'unread_send^{cleaned_user_name}^{chat_id}^{user_id}')
-            print(cleaned_user_name,chat_id,user_id)
             buttons.append(button)
 
         # Create the "Next" and "Back" buttons for page navigation
@@ -666,7 +691,6 @@ async def unread_data(message: types.Message):
 
 @dp.message_handler(Command("data") & ChatTypeFilter(types.ChatType.GROUP))
 async def get_data(message: types.Message, just = None):
-    print(message)
     global current_page
     global current_page_message_id
     # Define the number of contacts to display per page
@@ -675,10 +699,10 @@ async def get_data(message: types.Message, just = None):
 
     # Clear the unique_user_names set for the current page
     unique_user_names.clear()
-    user_id = get_clinet_id(message.chat.id)
+    user_id = get_user_id(message.chat.id)
     token = get_token(message.chat.id)
-    avito_data = get_avito_data(token=token,user_id=user_id)
 
+    avito_data = get_avito_data(token=token,user_id=user_id)
     if avito_data:
         user_data_list = []
 
@@ -719,7 +743,7 @@ async def get_data(message: types.Message, just = None):
 
             user_id = user_data["user_id"]
             chat_id = user_data["chat_id"]
-            button = types.InlineKeyboardButton(text=name, callback_data=f'send^{cleaned_user_name}^{chat_id}^{user_id}')
+            button = types.InlineKeyboardButton(text=name, callback_data=f'send^{cleaned_user_name}^{user_id}^{chat_id}')
             buttons.append(button)
 
         # Create the "Next" and "Back" buttons for page navigation
@@ -738,8 +762,7 @@ async def get_data(message: types.Message, just = None):
 
         # Check if there's an existing message to edit
         if current_page_message_id and just==None:
-            print(current_page_message_id)
-            print(current_page)
+
             try:
                 await bot.edit_message_text(chat_id=message.chat.id, message_id=current_page_message_id,
                                             text="Выберите пользователя:", reply_markup=keyboard)
@@ -777,21 +800,9 @@ async def page_navigation_callback(callback_query: types.CallbackQuery):
     global current_page_message_id  # Declare a global variable to store the message ID
     page_number = int(callback_query.data.split('_')[1])
     current_page = page_number  # Update the current page
-    print(callback_query.message)
     # Trigger a refresh of the data
     await get_data(callback_query.message)
 
-
-# Add a callback handler for page navigation
-@dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('unread_page_'))
-async def page_navigation_callback(callback_query: types.CallbackQuery):
-    global current_page  # Declare that we are using the global current_page variable
-    global current_page_message_id  # Declare a global variable to store the message ID
-    page_number = int(callback_query.data.split('_')[1])
-    current_page = page_number  # Update the current page
-    print(callback_query.message)
-    # Trigger a refresh of the data
-    await get_data(callback_query.message)
 
 
 
@@ -801,27 +812,11 @@ async def page_navigation_callback(callback_query: types.CallbackQuery):
 #     user_name = callback_query.data.replace('send_', '')
 #     await bot.send_message(callback_query.from_user.id, f"Вы выбрали пользователя: {user_name}")
 
-@dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('unread_send^'))
-async def process_callback(callback_query: types.CallbackQuery):
-    print(callback_query.data)
-    user_data = callback_query.data.replace('send^', '').split('^')
-    chat_id = ''
-    user_id = ''
-    if len(user_data)>2:
-        chat_id, user_id = user_data[1], user_data[2]
-    else:
-        chat_id, user_id = user_data[0], user_data[1]
-    # Создайте встроенную клавиатуру inline
-    keyboard = types.InlineKeyboardMarkup(row_width=2)
-    keyboard.add(types.InlineKeyboardButton(text="💬Посмотреть чат", callback_data=f'view-chat^{chat_id}^{user_id}'))
-    keyboard.add(types.InlineKeyboardButton(text="📨Отправить сообщение", callback_data=f'send-message^{chat_id}^{user_id}'))
-    keyboard.add(types.InlineKeyboardButton(text="🔚Назад", callback_data=f'back'))
 
 
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('send^'))
 async def process_callback(callback_query: types.CallbackQuery):
-    print(callback_query.data)
     user_data = callback_query.data.replace('send^', '').split('^')
     chat_id = ''
     user_id = ''
@@ -847,7 +842,6 @@ async def process_callback(callback_query: types.CallbackQuery):
     
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('seend^'))
 async def process_callback2(callback_query: types.CallbackQuery):
-    print(callback_query.data)
     user_data = callback_query.data.replace('send^', '').split('^')
     chat_id = ''
     user_id = ''
@@ -876,13 +870,11 @@ async def process_callback2(callback_query: types.CallbackQuery):
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith(('back','view-chat^', 'send-message^', 'last-message^')))
 async def action_callback(callback_query: types.CallbackQuery,state: FSMContext):
     action_data = callback_query.data
-    print(action_data)
+    chat_text = ''
     action_data = callback_query.data.split('^')
-    print(action_data)
     action = action_data[0]
     if len(action_data)>2:
-        print(len(action_data))
-        chat_id, user_id = action_data[1], action_data[2]
+        user_id, chat_id  = action_data[1], action_data[2]
     else:
         pass
 
@@ -892,18 +884,16 @@ async def action_callback(callback_query: types.CallbackQuery,state: FSMContext)
         callback_query.data = f'page_{current_page}'
         page_number = int(callback_query.data.split('_')[1])
         current_page = page_number  # Update the current page
-        print(callback_query.message)
         # Trigger a refresh of the data
         await get_data(callback_query.message,just='responce')
 
     elif action == 'view-chat':
         # Обработка действия "Посмотреть чат"
-        resp = get_clinet_id(callback_query.message.chat.id)  # Получаем client_id
+        resp = get_user_id(callback_query.message.chat.id)  # Получаем client_id
         token = get_token(callback_query.message.chat.id)
         data = get_avito_messages(user_id=resp, chat_id=chat_id, token=token)
-        chat_text = ""
-        messages = data['messages']  # Получаем все сообщения чата
-        print(messages)
+        messages = data['messages'][:10]  # Получаем все сообщения чата
+
 
         # Итерируемся по сообщениям в обратном порядке
         for message in reversed(messages):
@@ -961,10 +951,10 @@ async def action_callback(callback_query: types.CallbackQuery,state: FSMContext)
     elif action == 'send-message':
 
     # Получаем chat_id и user_id из callback_data
-        chat_id, user_id = action_data[1], action_data[2]
-
+        user_id, chat_id = action_data[1], action_data[2]
+        print(user_id,chat_id)
         # Запрашиваем текст у пользователя
-        await bot.send_message(callback_query.from_user.id, "Введите текст сообщения:")
+        await bot.send_message(callback_query.message.chat.id, "Введите текст сообщения:")
 
         # Устанавливаем состояние, чтобы ожидать ответа пользователя
         await MyStates.waiting_for_text.set()
@@ -973,6 +963,7 @@ async def action_callback(callback_query: types.CallbackQuery,state: FSMContext)
         async with state.proxy() as data:
             data['chat_id'] = chat_id
             data['user_id'] = user_id
+            data['telegram_chat_id'] = callback_query.message.chat.id  # Добавляем chat_id Telegram чата
 
 
 @dp.message_handler(state=MyStates.waiting_for_text)
@@ -980,30 +971,89 @@ async def process_text(message: Message, state: FSMContext):
     async with state.proxy() as data:
         chat_id = data['chat_id']
         user_id = data['user_id']
-
-        # Отправляем текстовое сообщение пользователю
-        resp = get_clinet_id(message.chat.id)  # Получаем client_id
+        telegram_chat_id = data['telegram_chat_id']  # Получаем chat_id Telegram чата
+        # Отправляем текстовое сообщение в чат с пользователем
+        resp = get_user_id(message.chat.id)  # Получаем client_id
         token = get_token(message.chat.id)
+
         send_message(chat_id=chat_id, user_id=resp, text=message.text, token=token)
         mark_chat_as_read(resp, chat_id, token=token)
-
         
+        # Отправляем уведомление о успешной отправке сообщения
         keyboard = types.InlineKeyboardMarkup(row_width=2)
         keyboard.add(types.InlineKeyboardButton(text="📨Отправить сообщение еще раз", callback_data=f'send-message^{chat_id}^{user_id}'))
         keyboard.add(types.InlineKeyboardButton(text="🔚Назад", callback_data=f'seend^{chat_id}^{user_id}'))
-        # Уведомляем пользователя, что сообщение отправлено
-
         await bot.send_message(
-            chat_id=message.chat.id,
+            chat_id=telegram_chat_id,  # Используйте chat_id чата с пользователем
             text='Сообщение отправлено успешно!',
             parse_mode='html',
-            reply_markup= keyboard
+            reply_markup=keyboard
         )
-
     # Завершаем состояние
     await state.finish()
 
 
+
+@dp.message_handler(content_types=types.ContentTypes.TEXT, chat_type=types.ChatType.GROUP)
+async def check_pattern(message: types.Message):
+    if message.text.startswith("Шаблон"):
+        # Если сообщение начинается с "Шаблон", выполните нужные действия
+        lst = message.text.split('\n')
+        print(lst)
+        conn = sqlite3.connect('my_database.db')
+        cursor = conn.cursor()
+        try:
+            # Проверяем существование записи с указанным chat_id
+            cursor.execute('SELECT id FROM chats WHERE chat_id = ?', (message.chat.id,))
+            existing_chat = cursor.fetchone()
+            print('exitsting_chat',existing_chat)
+            if existing_chat != None:
+                print('ggfgfgfg')
+                cursor.execute('SELECT id, test_period FROM chats WHERE chat_id = ?', (message.chat.id,))
+                time = cursor.fetchone()
+                test_period_str = time[1]
+                print(test_period_str)
+                test_period_str = test_period_str.split('.')[0]  # Отбрасываем дробную часть секунды
+                test_period = datetime.datetime.strptime(test_period_str, '%Y-%m-%d %H:%M:%S')
+                if test_period <= datetime.datetime.now():
+                    keyboard = types.InlineKeyboardMarkup()
+                    sum = get_sum(tg_id=message.chat.id)
+                    keyboard.add(types.InlineKeyboardButton(text='Продлить подписку',url=sum))
+                    await message.reply(f"Ваш тестовый период истек. Для продолжения работы, пожалуйста оплатите подписку",reply_markup=keyboard)
+                else:
+                    token = set_personal_token(client_id=lst[2],client_secret=lst[3])
+                    # Обновляем существующую запись в таблице chats
+                    cursor.execute('UPDATE chats SET id_avito = ?, client_id = ?, client_secret = ?, token = ?  WHERE chat_id = ?',
+                                (lst[1], lst[2], lst[3], token, message.chat.id))
+                    conn.commit()
+                    asyncio.create_task(background_task(message.chat.id))
+            else:
+                if test_period <= datetime.datetime.now():
+                    keyboard = types.InlineKeyboardMarkup()
+                    sum = get_sum(tg_id=message.chat.id)
+                    keyboard.add(types.InlineKeyboardButton(text='Продлить подписку',url=sum))
+                    await message.reply(f"Ваш тестовый период истек. Для продолжения работы, пожалуйста оплатите подписку",reply_markup=keyboard)
+                else:
+                    token = set_personal_token(client_id=lst[2],client_secret=lst[3])
+                    # Если запись не существует, создаем новую
+                    cursor.execute('INSERT INTO chats (chat_id, id_avito, client_id, client_secret,token) VALUES (?, ?, ?, ?, ?)',
+                                (message.chat.id, lst[1], lst[2], lst[3], token))
+                    
+                    conn.commit()
+                    asyncio.create_task(background_task(message.chat.id))
+            
+            # Сохраняем изменения в базе данных
+
+
+        except:
+            pass
+            
+        # Закрываем соединение
+        conn.close()
+
+    else:
+        # Если сообщение не начинается с "Шаблон", можно выполнить другие действия или проигнорировать его
+        await message.reply("Сообщение не начинается с 'Шаблон'.")
 
 # Обработчик команды /account_info
 @dp.message_handler(commands=['account_info'])
@@ -1061,7 +1111,6 @@ async def process_sum(message: Message, state: FSMContext):
     try:
         # Получаем введенную пользователем сумму
         user_input = message.text
-        print(user_input)
         # Преобразуем введенный текст в число (проверьте, что это число)
         sum_to_set = float(user_input)
 
@@ -1085,10 +1134,9 @@ async def handle_text(message: types.Message):
         conn = sqlite3.connect('my_database.db')
         cursor = conn.cursor()
         text = text.replace(' ','')
-        print(text)
         # Данные пользователя
         id_telegram = message.chat.id  # Пример id_telegram
-        client_id = get_clinet_id(message.chat.id)   # Пример client_id
+        client_id = get_user_id(message.chat.id)   # Пример client_id
 
         # SQL-запрос для проверки наличия записи с данным id_telegram
         select_query = 'SELECT * FROM clients WHERE id_telegram = ?'
@@ -1099,7 +1147,6 @@ async def handle_text(message: types.Message):
 
         # Если запись существует, обновите её client_id
         if existing_record:
-            print('попытка')
             update_query = 'UPDATE clients SET client_id = ? WHERE id_telegram = ?'
             cursor.execute(update_query, (text, id_telegram))
         else:
@@ -1118,10 +1165,177 @@ async def handle_text(message: types.Message):
     # Здесь вы можете обрабатывать текстовые сообщения от пользователя
     # и выполнять соответствующие действия
 
-def run_check_new_messages():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(check_new_messages())
+
+@dp.callback_query_handler(lambda callback_query: callback_query.data.startswith(('view-chat-group^','send-message-group^')))
+async def action_callback(callback_query: types.CallbackQuery,state: FSMContext):
+    action_data = callback_query.data
+    action_data = callback_query.data.split('^')
+    action = action_data[0]
+    chat_id = ''
+    user_id = ''
+    if len(action_data)>2:
+        user_id, chat_id= action_data[1], action_data[2]
+    else:
+        pass
+    if action == 'back':
+        global current_page  # Declare that we are using the global current_page variable
+        global current_page_message_id  # Declare a global variable to store the message ID
+        callback_query.data = f'page_{current_page}'
+        page_number = int(callback_query.data.split('_')[1])
+        current_page = page_number  # Update the current page
+        # Trigger a refresh of the data
+        await get_data(callback_query.message,just='responce')
+    elif action == 'send-message-group':
+
+    # Получаем chat_id и user_id из callback_data
+        user_id, chat_id = action_data[1], action_data[2]
+        # Запрашиваем текст у пользователя
+        await bot.send_message(callback_query.message.chat.id, "Введите текст сообщения:")
+
+        # Устанавливаем состояние, чтобы ожидать ответа пользователя
+        await MyStatesGroup.waiting_for_text.set()
+
+        # Сохраняем chat_id и user_id в состоянии, чтобы использовать их в следующем шаге
+        async with state.proxy() as data:
+            data['chat_id'] = chat_id
+            data['user_id'] = user_id
+            data['telegram_chat_id'] = callback_query.message.chat.id  # Добавляем chat_id Telegram чата
+
+
+
+
+    elif action == 'view-chat-group':
+        # Обработка действия "Посмотреть чат"
+        resp = get_user_id(callback_query.message.chat.id)  # Получаем client_id
+        token = get_token(callback_query.message.chat.id)
+        data = get_avito_messages(user_id=resp, chat_id=chat_id, token=token)
+        chat_text = ""
+        messages = data['messages'][:10]  # Получаем все сообщения чата
+
+        # Итерируемся по сообщениям в обратном порядке
+        for message in reversed(messages):
+            message_type = message['type']
+            sender = "<b>👤 Вы</b>" if message['direction'] == 'out' else "<b>📬 Вам</b>"
+
+            if message_type == 'text':
+                text = message['content']['text']
+                created_timestamp = message['created']
+                created_date = datetime.datetime.fromtimestamp(created_timestamp).strftime('%A %d %B')  # Форматируем дату как "понедельник 27 сентября"
+                chat_text += f"{sender} ({created_date}): {text}\n\n"  # Добавляем имя отправителя и форматированную дату
+            elif message_type == 'link':
+                link_text = message['content']['link']['text']
+                link_url = message['content']['link']['url']
+                chat_text += f"{sender} ({created_date}) отправил ссылку: {link_text} ({link_url})\n"  # Добавляем имя отправителя и форматированную дату
+            elif message_type == 'location':
+                location_data = message['content']['location']
+                location_text = location_data['text']
+                location_title = location_data['title']
+                location_lat = location_data['lat']
+                location_lon = location_data['lon']
+                chat_text += f"{sender} ({created_date}) отправил локацию:\n{location_text}\n({location_title}, Широта: {location_lat}, Долгота: {location_lon})\n"
+            elif message_type == 'photo':
+                # Обработка сообщений с фото
+                chat_text += f"{sender} ({created_date}) отправил фотографию(и)\n"
+            elif message_type == 'video':
+                # Обработка сообщений с видео
+                chat_text += f"{sender} ({created_date}) отправил видео\n"
+            # Добавьте другие типы сообщений, такие как quick_reply и другие, по мере необходимости.
+
+        token = get_token(callback_query.message.chat.id)
+
+        mark_chat_as_read(resp, chat_id, token=token)
+        # Отправляем объединенный текстовый чат
+        keyboard = types.InlineKeyboardMarkup(row_width=2)
+        keyboard.add(types.InlineKeyboardButton(text="📨Отправить сообщение", callback_data=f'send-message-group^{chat_id}^{user_id}'))
+        await bot.edit_message_text(
+        chat_id=callback_query.message.chat.id,
+        message_id=callback_query.message.message_id,
+        text=chat_text,
+        parse_mode='html',
+        reply_markup=keyboard
+    )
+        callback_query.data = f'send^{chat_id}^{user_id}'
+    
+
+
+@dp.message_handler(state=MyStatesGroup.waiting_for_text)
+async def process_text(message: Message, state: FSMContext):
+    async with state.proxy() as data:
+        chat_id = data['chat_id']
+        user_id = data['user_id']
+        telegram_chat_id = data['telegram_chat_id']  # Получаем chat_id Telegram чата
+        # Отправляем текстовое сообщение в чат с пользователем
+        resp = get_user_id(message.chat.id)  # Получаем client_id
+        token = get_token(message.chat.id)
+        send_message(chat_id=chat_id, user_id=resp, text=message.text, token=token)
+        mark_chat_as_read(resp, chat_id, token=token)
+        print('мои данные',chat_id,user_id)
+        # Отправляем уведомление о успешной отправке сообщения
+        keyboard = types.InlineKeyboardMarkup(row_width=2)
+        keyboard.add(types.InlineKeyboardButton(text="📨Отправить сообщение еще раз", callback_data=f'send-message-group^{chat_id}^{user_id}'))
+        keyboard.add(types.InlineKeyboardButton(text="🔚Назад", callback_data=f'seend^{chat_id}^{user_id}'))
+        await bot.send_message(
+            chat_id=telegram_chat_id,  # Используйте chat_id чата с пользователем
+            text='Сообщение отправлено успешно!',
+            parse_mode='html',
+            reply_markup=keyboard
+        )
+    # Завершаем состояние
+    await state.finish()
+
+async def get_unread_messages(chat_id):
+    avito_id = get_user_id(chat_id)
+    token = get_token(chat_id)
+    json_data = get_unread_messagef_avito(token=token, user_id=avito_id)
+    ch_id = ''
+    # Создайте список, чтобы отслеживать идентификаторы отправленных сообщений
+    sent_message_ids = sent_messages.get(chat_id, [])
+            
+    
+    if "chats" in json_data:
+        for chat in json_data["chats"]:
+            message_id = chat["last_message"]["id"]
+            if message_id not in sent_message_ids:
+                sent_message_ids.append(message_id)
+                sent_messages[chat_id] = sent_message_ids
+                ch_id = chat['id']
+                title = chat["context"]["value"]["title"]
+                price_string = chat["context"]["value"]["price_string"]
+                url = chat["context"]["value"]["url"]
+                city = chat["context"]["value"]["location"]["title"]
+
+                users = chat["users"]
+                author_name = ""
+                client_name = ""
+                for user in users:
+                    if user["id"] == chat["last_message"]["author_id"]:
+                        author_name = user["name"]
+                    else:
+                        client_name = user["name"]
+
+                last_message_text = chat["last_message"]["content"]["text"]
+
+                # Создание сообщения
+                response_message = (
+                f"Товар: {title} {price_string}\n"
+                f"Автор товара: {client_name}\n"
+                f"Город: {city}\n"
+                f"Клиент: {author_name}\n\n"
+                f"Текст сообщения:\n{last_message_text}\n\n"
+                f"[Ссылка на товар]({url})"
+            )
+                keyboard = types.InlineKeyboardMarkup()
+                keyboard.add(types.InlineKeyboardButton(text="📨Отправить сообщение", callback_data=f'send-message-group^{avito_id}^{ch_id}'),types.InlineKeyboardButton(text="💬Посмотреть чат", callback_data=f'view-chat-group^{avito_id}^{ch_id}'))
+                await bot.send_message(chat_id, text=response_message,parse_mode=types.ParseMode.MARKDOWN,reply_markup=keyboard)
+
+
+async def background_task(chat_id):
+    while True:
+        print("Checking for unread messages...")
+        # Получение всех непрочитанных сообщений
+        await get_unread_messages(chat_id)
+        await asyncio.sleep(5)  # Подождите 5 секунд перед повторным выполнением
+
 
 if __name__ == '__main__':
     make_db()

@@ -8,6 +8,9 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 class MyStates(StatesGroup):
     waiting_for_text = State()  # Состояние для ожидания текста от пользователя 
 
+class MyStatesGroup(StatesGroup):
+    waiting_for_text = State()  # Состояние для ожидания текста от пользователя 
+
 
 class YooMoneySum(StatesGroup):
     waiting_fot_sum = State()

@@ -1,7 +1,7 @@
 
 import sqlite3
 import datetime
-
+import requests
 def make_db():
     # Подключение к базе данных (если она существует) или создание новой
     conn = sqlite3.connect('my_database.db')
@@ -26,8 +26,10 @@ def make_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         chat_id INTEGER,
         acc_id INTEGER,
+        id_avito TEXT,
         client_id TEXT,
         client_secret TEXT,
+        token TEXT,
         test_period TEXT,
         FOREIGN KEY (acc_id) REFERENCES clients (id)
 
@@ -49,7 +51,7 @@ def make_db():
 
 
 
-def get_clinet_id(idd):
+def get_user_id(idd):
     conn = sqlite3.connect('my_database.db')
     cursor = conn.cursor()
 
@@ -57,7 +59,7 @@ def get_clinet_id(idd):
     target_id_telegram = idd # Замените этим вашим id_telegram
 
         # SQL-запрос для выбора client_id по id_telegram
-    select_query = 'SELECT client_id FROM clients WHERE id_telegram = ?'
+    select_query = 'SELECT id_avito FROM chats WHERE chat_id = ?'
     cursor.execute(select_query, (target_id_telegram,))
 
         # Извлечение результата запроса
@@ -66,12 +68,10 @@ def get_clinet_id(idd):
         # Если результат не равен None, то есть запись найдена, получите client_id
     if result is not None:
         client_id = result[0]
-        print(f"client_id для id_telegram {target_id_telegram}: {client_id}")
         conn.close()
         return client_id
 
     else:
-        print(f"Запись для id_telegram {target_id_telegram} не найдена")
         conn.close()
         return None
 
@@ -86,7 +86,7 @@ def get_token(idd):
     target_id_telegram = idd # Замените этим вашим id_telegram
 
         # SQL-запрос для выбора client_id по id_telegram
-    select_query = 'SELECT token FROM clients WHERE id_telegram = ?'
+    select_query = 'SELECT token FROM chats WHERE chat_id = ?'
     cursor.execute(select_query, (target_id_telegram,))
 
         # Извлечение результата запроса
@@ -95,7 +95,6 @@ def get_token(idd):
         # Если результат не равен None, то есть запись найдена, получите client_id
     if result is not None:
         token = result[0]
-        print(f"token для id_telegram {target_id_telegram}: {token}")
         conn.close()
         return token
 
@@ -128,3 +127,34 @@ def update_subscription_end_date_in_database(user_id, new_end_date):
     cursor.execute('UPDATE chats SET test_period = ? WHERE chat_id = ?', (new_end_date, user_id))
     conn.commit()
     conn.close()
+
+
+def set_personal_token(client_id,client_secret):
+    url = "https://api.avito.ru/token/"
+
+
+
+    # Параметры запроса
+    data = {
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "grant_type": "client_credentials"
+    }
+
+    # Отправляем POST-запрос
+    response = requests.post(url, data=data)
+
+    # Проверяем статус-код ответа
+    if response.status_code == 200:
+        # Получаем токен из ответа
+        token_data = response.json()
+        access_token = token_data.get("access_token")
+        token_type = token_data.get("token_type")
+        
+        print("Access Token:", access_token)
+        print("Token Type:", token_type)
+        return access_token
+    else:
+        print("Ошибка при запросе токена. Код статуса:", response.status_code)
+        print("Текст ошибки:", response.text)
+        

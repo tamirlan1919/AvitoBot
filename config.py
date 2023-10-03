@@ -28,3 +28,39 @@ if response.status_code == 200:
 else:
     print(f'Error: {response.status_code}')
     print(response.text)
+
+
+def set_personal_token(client_id,client_secret):
+    url = "https://api.avito.ru/token/"
+
+
+
+    # Параметры запроса
+    data = {
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "grant_type": "client_credentials"
+    }
+
+    # Отправляем POST-запрос
+    response = requests.post(url, data=data)
+
+    # Проверяем статус-код ответа
+    if response.status_code == 200:
+        # Получаем токен из ответа
+        token_data = response.json()
+        access_token = token_data.get("access_token")
+        token_type = token_data.get("token_type")
+        
+        print("Access Token:", access_token)
+        print("Token Type:", token_type)
+        return access_token
+    else:
+        print("Ошибка при запросе токена. Код статуса:", response.status_code)
+        print("Текст ошибки:", response.text)
+        
+
+
+
+
+

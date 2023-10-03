@@ -20,8 +20,19 @@ def get_avito_data(token,user_id):
         return None
 
 
+def get_unread_messagef_avito(token,user_id):
+    url = f'https://api.avito.ru/messenger/v2/accounts/{user_id}/chats/?unread_only=true'
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'User-Agent': 'Python'
+    }
+    response = requests.get(url=url, headers=headers)
 
-
+    if response.status_code == 200:
+        data = response.json()
+        return data
+    else:
+        return None
 def get_avito_unread_data(token, user_id):
     URL = f'https://api.avito.ru/messenger/v2/accounts/{user_id}/chats/'
     params = {
