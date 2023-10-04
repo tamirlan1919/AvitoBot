@@ -12,5 +12,14 @@ class MyStatesGroup(StatesGroup):
     waiting_for_text = State()  # Состояние для ожидания текста от пользователя 
 
 
+class AutoResponseState(StatesGroup):
+    WaitingForTitle = State()  # Состояние ожидания ввода заголовка
+    WaitingForAvitoIds = State()  # Состояние ожидания ввода ids объявления
+    WaitingForResponseText = State()  # Состояние ожидания ввода текста сообщения
+    WaitingForWeekDays = State()
+    WaitingForConfirmation = State()  # Состояние ожидания подтверждения
+
+
+
 class YooMoneySum(StatesGroup):
     waiting_fot_sum = State()

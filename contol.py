@@ -35,10 +35,24 @@ def make_db():
 
     );
     '''
+    create_msgs_table_query = '''
+    CREATE TABLE IF NOT EXISTS msgs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT,
+        chat_id INTEGER UNIQUE,
+        enabled INTEGER,
+        week_days TEXT,
+        avito_ids TEXT,
+        response_text TEXT,
+        time TEXT,
+        FOREIGN KEY (chat_id) REFERENCES chats (chat_id)
+    );
+    '''
 
     # Выполнение SQL-запросов для создания таблиц
     cursor.execute(create_clients_table_query)
     cursor.execute(create_chats_table_query)
+    cursor.execute(create_msgs_table_query)
 
     # Сохранение изменений в базе данных
     conn.commit()
@@ -76,6 +90,7 @@ def get_user_id(idd):
         return None
 
         # Закрытие соединения с базой данных
+
 
 
 def get_token(idd):
@@ -158,3 +173,5 @@ def set_personal_token(client_id,client_secret):
         print("Ошибка при запросе токена. Код статуса:", response.status_code)
         print("Текст ошибки:", response.text)
         
+
+

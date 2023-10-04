@@ -46,6 +46,9 @@ client = Client(yoomoney_token)
 BOT_TOKEN = '6515821471:AAFspRJMRcCFfJP8-g9WRGS02jK-aydFsBo'
 
 
+week_days_list = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
+
+selected_days_dict ={}
 
 
 # Инициализация бота и диспетчера
@@ -54,6 +57,7 @@ memory_storage = MemoryStorage()  # Инициализируем MemoryStorage
 dp = Dispatcher(bot,storage=memory_storage)
 dp.middleware.setup(LoggingMiddleware())
 sent_messages = {}
+sent_welcome_messages = {}
 
 
 current_page = 0
@@ -591,6 +595,60 @@ async def add_answer(callback_query: types.CallbackQuery):
         reply_markup=keyboard
     ) 
 
+#На первое сообщение функция 
+
+@dp.callback_query_handler(lambda callback_query: callback_query.data == 'first_message')
+async def time_message(callback_query: types.CallbackQuery):
+    print('test')
+    conn = sqlite3.connect('my_database.db')
+    cursor = conn.cursor()
+    user_id_telegram = callback_query.message.chat.id
+
+    try:
+
+        # Получаем user_id из таблицы clients
+        cursor.execute('SELECT id FROM clients WHERE id_telegram = ?', (user_id_telegram,))
+        user_id = cursor.fetchone()
+        if user_id:
+            # Если нашли user_id, теперь получаем все чаты, привязанные к этому user_id
+            print(user_id)
+            cursor.execute('SELECT * FROM chats WHERE acc_id = ?', (user_id[0],))
+            chats = cursor.fetchall()
+
+                # В переменной chats теперь хранятся все чаты, привязанные к заданному acc_id
+            for chat in chats:
+                chat_id = chat[1]
+                id_avito = chat[2]
+                client_id = chat[3]
+                client_secret = chat[4]
+                token = chat[5]
+                test_period = chat[6]
+                token = get_token(chat_id)
+                profile = get_profile(token=token)
+                profile_name = profile['name']
+                profile_url = profile['profile_url']
+                chat_info = await bot.get_chat(chat_id)
+                # Формируем текст сообщения
+                message_text = (
+                    f"<b>Профиль:</b> <a href='{profile_url}'>{profile_name}</a>\n"
+                    f"<b>Название группы:</b> <code>{chat_info.title}</code>\n"
+                    f"<b>Номер аккаунта:</b> <code>{user_id_telegram}</code>\n"
+                    f"<b>Client_id:</b> <code>{client_id}</code>\n"
+                    f"<b>Client_secret:</b> <code>{client_secret}</code>"
+                )
+
+                # Создаем кнопку "Выбрать"
+                keyboard = types.InlineKeyboardMarkup()
+                keyboard.add(types.InlineKeyboardButton(text="Выбрать", callback_data=f"select^{chat_id}"))
+
+                # Отправляем сообщение с разметкой и кнопкой
+                await bot.send_message(callback_query.message.chat.id, text=message_text, parse_mode="html", reply_markup=keyboard)
+
+                # Дальше можно делать что-то с данными о чатах
+
+    except:
+        await bot.send_message(callback_query.message.chat.id,'haha')
+
 @dp.callback_query_handler(lambda callback_query: callback_query.data == 'back_main')
 async def back_main(callback_query: types.CallbackQuery):
     keyboard = types.InlineKeyboardMarkup()
@@ -602,6 +660,223 @@ async def back_main(callback_query: types.CallbackQuery):
         text='Выберите опцию',
         reply_markup=keyboard
     ) 
+
+@dp.callback_query_handler(lambda callback_query: callback_query.data == 'spisok')
+async def spisok(callback_query: types.CallbackQuery):
+    print('test')
+    conn = sqlite3.connect('my_database.db')
+    cursor = conn.cursor()
+    user_id_telegram = callback_query.message.chat.id
+
+    try:
+
+        # Получаем user_id из таблицы clients
+        cursor.execute('SELECT id FROM clients WHERE id_telegram = ?', (user_id_telegram,))
+        user_id = cursor.fetchone()
+        if user_id:
+            # Если нашли user_id, теперь получаем все чаты, привязанные к этому user_id
+            print(user_id)
+            cursor.execute('SELECT * FROM chats WHERE acc_id = ?', (user_id[0],))
+            chats = cursor.fetchall()
+
+                # В переменной chats теперь хранятся все чаты, привязанные к заданному acc_id
+            for chat in chats:
+                chat_id = chat[1]
+                id_avito = chat[2]
+                client_id = chat[3]
+                client_secret = chat[4]
+                token = chat[5]
+                test_period = chat[6]
+                token = get_token(chat_id)
+                profile = get_profile(token=token)
+                profile_name = profile['name']
+                profile_url = profile['profile_url']
+                chat_info = await bot.get_chat(chat_id)
+                # Формируем текст сообщения
+                message_text = (
+                    f"<b>Профиль:</b> <a href='{profile_url}'>{profile_name}</a>\n"
+                    f"<b>Название группы:</b> <code>{chat_info.title}</code>\n"
+                    f"<b>Номер аккаунта:</b> <code>{user_id_telegram}</code>\n"
+                    f"<b>Client_id:</b> <code>{client_id}</code>\n"
+                    f"<b>Client_secret:</b> <code>{client_secret}</code>"
+                )
+
+                # Создаем кнопку "Выбрать"
+                keyboard = types.InlineKeyboardMarkup()
+                keyboard.add(types.InlineKeyboardButton(text="Выбрать", callback_data=f"select^{chat_id}"))
+
+                # Отправляем сообщение с разметкой и кнопкой
+                await bot.send_message(callback_query.message.chat.id, text=message_text, parse_mode="html", reply_markup=keyboard)
+        keyboard = types.InlineKeyboardMarkup()
+        keyboard.add(types.InlineKeyboardButton(text='⬅️ Вернуться в главное меню',callback_data='back_main'))
+
+                # Дальше можно делать что-то с данными о чатах
+        await bot.send_message(callback_query.message.chat.id,'Назад',reply_markup=keyboard)
+    except:
+        await bot.send_message(callback_query.message.chat.id,'haha')
+
+
+
+
+
+#Состояния для ввода первого сообщения
+
+# Обработчик для начала установки настроек автоответа
+@dp.callback_query_handler(lambda callback_query: callback_query.data.startswith(('select^')))
+async def select_callback(callback_query: types.CallbackQuery,state: FSMContext):
+    action_data = callback_query.data.split('^')
+    chat_id = action_data[1]  # Получаем chat_id из action_data
+    await state.update_data(chat_id=chat_id)  # Сохраняем chat_id в состоянии FSM
+    await AutoResponseState.WaitingForTitle.set()
+    await callback_query.message.reply("Введите заголовок автоответа:")
+
+
+# Обработчик для ввода заголовка
+@dp.message_handler(lambda message: message.text, state=AutoResponseState.WaitingForTitle)
+async def enter_title(message: Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['title'] = message.text
+    await AutoResponseState.WaitingForAvitoIds.set()
+    await message.reply("Введите ids объявления:")
+
+# Обработчик для ввода ids объявления
+@dp.message_handler(lambda message: message.text, state=AutoResponseState.WaitingForAvitoIds)
+async def enter_avito_ids(message: Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['avito_ids'] = message.text
+    await AutoResponseState.WaitingForResponseText.set()
+    await message.reply("Введите текст сообщения:")
+
+# Обработчик для ввода текста сообщения
+@dp.message_handler(lambda message: message.text, state=AutoResponseState.WaitingForResponseText)
+async def enter_response_text(message: Message, state: FSMContext):
+    chat_id = message.chat.id
+
+    async with state.proxy() as data:
+        chat_id_from_state = data['chat_id']  # Получаем chat_id из состояния FSM
+        title = data['title']
+        avito_ids = data['avito_ids']
+        response_text = message.text
+        
+        # Добавляем состояние для выбора дней недели
+        await AutoResponseState.WaitingForWeekDays.set()
+        
+        # Создаем клавиатуру для выбора дней недели
+        markup = get_week_days_keyboard(data.get("selected_days", []))
+        await message.reply("Выберите дни недели:", reply_markup=markup)
+        
+        # Сохраняем данные во временных переменных
+        data['response_text'] = response_text
+        data['chat_id_for_week_days'] = chat_id_from_state
+
+
+@dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('choose_day_'), state=AutoResponseState.WaitingForWeekDays)
+async def choose_day(callback_query: types.CallbackQuery, state: FSMContext):
+    selected_day = callback_query.data.split('_')[2]
+    async with state.proxy() as data:
+        chat_id_from_state = data['chat_id_for_week_days']
+        response_text = data['response_text']
+        title = data['title']
+        avito_ids = data['avito_ids']
+        selected_days = selected_days_dict.get(chat_id_from_state, [])
+
+        if selected_day == "all":
+            if "all" in selected_days:
+                # Если "Выбрать все" уже выбран, уберите его
+                selected_days.remove("all")
+                selected_days.extend(week_days_list)
+            else:
+                # Иначе, выберите все дни недели
+                selected_days.extend(week_days_list)
+        else:
+            if selected_day in selected_days:
+                # Если день уже выбран, уберите его
+                selected_days.remove(selected_day)
+            else:
+                # Иначе, добавьте день
+                selected_days.append(selected_day)
+
+        selected_days_dict[chat_id_from_state] = selected_days
+        updated_markup = get_updated_week_days_keyboard(selected_day, selected_days)
+
+        # Проверяем, изменилась ли разметка
+        if updated_markup.inline_keyboard != callback_query.message.reply_markup.inline_keyboard:
+            # Создаем кнопку "Выбрать все", если она ещё не добавлена
+            if not any(button.callback_data == "choose_day_all" for row in updated_markup.inline_keyboard for button in row):
+                updated_markup.row(types.InlineKeyboardButton("Выбрать все", callback_data="choose_day_all"))
+            
+            # Создаем кнопку "Готово", если она ещё не добавлена
+            if not any(button.callback_data == "choose_day_done" for row in updated_markup.inline_keyboard for button in row):
+                updated_markup.row(types.InlineKeyboardButton("Готово", callback_data="choose_day_done"))
+            
+            await bot.edit_message_reply_markup(chat_id=callback_query.message.chat.id,
+                                                message_id=callback_query.message.message_id,
+                                                reply_markup=updated_markup)
+
+    await AutoResponseState.WaitingForConfirmation.set()  # Переходим в состояние ожидания подтверждения
+
+# Обработчик для кнопки "Готово"
+@dp.callback_query_handler(lambda callback_query: callback_query.data == "choose_day_done", state=AutoResponseState.WaitingForConfirmation)
+async def choose_day_done(callback_query: types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        chat_id_from_state = data['chat_id_for_week_days']
+        response_text = data['response_text']
+        title = data['title']
+        avito_ids = data['avito_ids']
+        selected_days = selected_days_dict.get(chat_id_from_state, [])
+        
+        if selected_days:
+            conn = sqlite3.connect('my_database.db')
+            cursor = conn.cursor()
+            
+            for selected_day in selected_days:
+                cursor.execute("INSERT OR REPLACE INTO msgs (title, chat_id, enabled, avito_ids, response_text, week_days) VALUES (?, ?, ?, ?, ?, ?)",
+                               (title, chat_id_from_state, 1, avito_ids, response_text, selected_day))
+            
+            conn.commit()
+            conn.close()
+
+        await state.finish()
+        await bot.send_message(chat_id_from_state, "Настройки автоответа сохранены.")
+
+
+
+
+
+# Функция для создания клавиатуры выбора дней недели
+def get_week_days_keyboard(selected_days=None):
+    markup = types.InlineKeyboardMarkup(row_width=3)
+    for day in week_days_list:
+        if day in selected_days:
+            # Если день выбран, добавляем смайлик ✅
+            markup.add(types.InlineKeyboardButton(text=f'✅ {day}', callback_data=f'choose_day_{day}'))
+        else:
+            # Иначе, добавляем кнопку с днем недели
+            markup.add(types.InlineKeyboardButton(text=day, callback_data=f'choose_day_{day}'))
+    
+    # Создаем кнопку для выбора всех дней
+    markup.add(types.InlineKeyboardButton(text="Выбрать все", callback_data="choose_day_all"))
+    
+    # Создаем кнопку "Готово"
+    markup.add(types.InlineKeyboardButton(text="Готово", callback_data="choose_day_done"))
+    
+    return markup
+# Функция для обновления клавиатуры выбора дней недели
+def get_updated_week_days_keyboard(selected_day, selected_days):
+    markup = types.InlineKeyboardMarkup(row_width=3)
+    for day in week_days_list:
+        if day == selected_day:
+            # Если день недели выбран, добавляем смайлик ✅
+            markup.add(types.InlineKeyboardButton(text=f'✅ {day}', callback_data=f'choose_day_{day}'))
+        else:
+            # Иначе, добавляем кнопку с днем недели
+            if day in selected_days:
+                # Если день уже выбран, добавляем смайлик ✅
+                markup.add(types.InlineKeyboardButton(text=f'✅ {day}', callback_data=f'choose_day_{day}'))
+            else:
+                markup.add(types.InlineKeyboardButton(text=day, callback_data=f'choose_day_{day}'))
+    return markup
+
 @dp.message_handler(commands='unread')
 async def unread_data(message: types.Message):
     global current_page2
@@ -1324,6 +1599,7 @@ async def get_unread_messages(chat_id):
                 f"Текст сообщения:\n{last_message_text}\n\n"
                 f"[Ссылка на товар]({url})"
             )
+                
                 keyboard = types.InlineKeyboardMarkup()
                 keyboard.add(types.InlineKeyboardButton(text="📨Отправить сообщение", callback_data=f'send-message-group^{avito_id}^{ch_id}'),types.InlineKeyboardButton(text="💬Посмотреть чат", callback_data=f'view-chat-group^{avito_id}^{ch_id}'))
                 await bot.send_message(chat_id, text=response_message,parse_mode=types.ParseMode.MARKDOWN,reply_markup=keyboard)

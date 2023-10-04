@@ -115,3 +115,18 @@ def mark_chat_as_read(user_id, chat_id,token):
         print(f"Failed to mark chat as read. Status code: {response.status_code}")
         print(response.text)  # Print the response content for debugging if needed
 
+
+
+def get_profile(token):
+    URL = 'https://api.avito.ru/core/v1/accounts/self'
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'User-Agent': 'Python'
+    }
+    response = requests.get(URL, headers=headers)
+    
+    if response.status_code == 200:
+        data = response.json()
+        return data
+    else:
+        return None
