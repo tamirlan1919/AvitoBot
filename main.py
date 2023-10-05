@@ -1,11 +1,6 @@
-import json
-import logging
-import requests
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.types import ParseMode
-import time
-import re
 import sqlite3
 import aiogram
 from aiogram import executor
@@ -16,7 +11,6 @@ from contol import *
 from avito_api import *
 from aiogram.utils import markdown
 from clean import *
-import threading
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.types import Message, ReplyKeyboardRemove
@@ -36,8 +30,7 @@ import os
 from aiogram import types
 from aiogram.utils import exceptions
 from money_cart import get_sum
-import json
-import schedule
+from teext import *
 from aiogram.dispatcher.filters import Command, ChatTypeFilter
 yoomoney_token = "4100117394518969.25C11A278171A9D98CF57B29E20869FE7175F8E5F0D82C642CB12B819214769229B792D693CD7A205D5D8B524294B1E710CECA73FB581A110CD748405B3A3709592F767FB683ACCE256C92453C4EA831F0E9EBA02063DF8DBA8728EE9B2A2CC60AA1EAD2AF79160F273D90F23C06E6E66B7B874261A33FD1BBA66C0A96297EAD"
 
@@ -90,25 +83,11 @@ async def check_new_messages(message:types.Message):
 
 @dp.message_handler(Command("start") & ChatTypeFilter(types.ChatType.PRIVATE))
 async def start(message: types.Message):
-    text = '''Бот работает с использованием официальных API-ключей, которые предоставляются после перевода вашего аккаунта на тип "КОМПАНИЯ". Важно отметить, что бот не будет функционировать с аккаунтом типа "ЧАСТНОЕ ЛИЦО". Бот поддерживает работу в любом выбранном вами тарифе.
-
-Если у вас есть небольшое количество объявлений и ваш аккаунт на данный момент настроен как "ЧАСТНОЕ ЛИЦО", вам следует связаться с поддержкой Авито по номеру 8 800 600 00 01 и запросить изменение типа аккаунта на "КОМПАНИЯ". После этого вы сможете подключить любой тариф и получить доступ к API-ключам.
-
-Важно помнить, что после перехода на тип "КОМПАНИЯ" вы будете обязаны подключить тариф с оплатой за просмотры, и обратное возвращение к бесплатным размещениям будет невозможным.
-
-Желаем вам приятного использования бота. Если у вас возникнут вопросы, не стесняйтесь обращаться в нашу поддержку, доступную по ссылке @timaadev'''
+    text = start_text
     await bot.send_message(message.chat.id,text=text)
     with open('video.mp4', 'rb') as video_file:
         await bot.send_video(chat_id=message.chat.id, video=video_file)
-    text1 = '''ИНСТРУКЦИЯ №1 ❗️❗️❗️
-
-В этом видео вы научитесь:
-
-1.Создавать папку для того, чтобы было удобно работать и все чаты были у вас на виду
-
-2.Создавать группу и добавлять бота (SK2) - не забудьте бота назначить АДМИНИСТАТОРОМ⚠️
-
-Дальнейшую инструкцию Вы найдете при создании "Любой группы" после нажатия "/start"'''
+    text1 = instruct_first
     user_id = message.chat.id
     conn = sqlite3.connect('my_database.db')
     cursor = conn.cursor()
@@ -174,58 +153,18 @@ async def start_group(message: types.Message):
 
     conn.close()
 
-    text1 = '''ПЕРЕД ИСПОЛЬЗОВАНИЕМ ОБЯЗАТЕЛЬНО ПРОЧТИТЕ❗️❗️❗️
-
-Бот работает через официальные Api ключи, которые выдаются при переводе типа аккаунта на "КОМПАНИЮ" . Бот работает в любом тарифе❗️
-
-ВАЖНО:  с типом "ЧАСТНОЕ ЛИЦО" БОТ работать НЕ  БУДЕТ❗️
-
-Если у вас не много объявлений и подключен тип аккаунта "Частное лицо", то позвоните в поддержку Авито (8 800 600 00 01) и попросите перевести ваш аккаунт на тип "КОМПАНИЯ". После этого нужно будет подключить любой тариф. После подключения Вам будут доступны ключи. 
-
-ВАЖНО❗️Если вы перейдете на тип "КОМПАНИЯ",нужно будет подключить тариф оплату за просмотры,обратно на бесплатные размещения перейти будет НЕ ВОЗМОЖНО❗️
-
-Приятного пользования. С уважением команда SK_Avito_Bot. Будут вопросы, обязательно пишите😊 в нашу поддержку          👉 @Manager_SK2_Avito 👈
-
-Так же попрошу Вас подписаться на мой канал @SK2_Avito_Kanal_Bot там будут выходить свежие новости,информация и различные обновления😊'''
+    text1 = before_reading
 
     await bot.send_message(message.chat.id,text=text1)
     with open('video2.mp4', 'rb') as video_file:
         await bot.send_video(chat_id=message.chat.id, video=video_file)    
-    text2 = '''ИНСТРУКЦИЯ №2 ❗️❗️❗️
-
-Этапы, которые нужно сделать в этой инструкции:
-
-
-1. Добавить созданную группу в созданную папку ( для удобства) 
-
-2. Для того, чтобы бот работал - Нужно в строку ввести /start - После нажать на кнопку "Управление подпиской" - произвести оплату подписки и нажать на кнопку "Оплатил"✅
-
-3. После оплаты можно вернуться в главное меню - нажать на кнопку "Проверить подписку💰" и убедиться, что подписка активна.
-
-4. После успешной оплаты подписки можете переходить к пункту "Подключение аккаунта➕"'''
+    text2 = instruct_second
     
     await bot.send_message(message.chat.id,text=text2)
     with open('video3.mp4', 'rb') as video_file:
         await bot.send_video(chat_id=message.chat.id, video=video_file)    
 
-    text3 = '''ИНСТРУКЦИЯ №3 ❗️❗️❗️
-
-Этапы, которые нужно сделать в этой инструкции:
-
-
-1. Переходим к пункту "Подключение аккаунта➕"
-
-2. Вам нужно перейти к себе на авито в раздел "Для профессионалов" вкладка "Интеграции", снизу будет написано "Получить ключи" или они уже там будут
-
-3. Копируйте слева "Номер профиля" он должен быть написан слитно БЕЗ ПРОБЕЛОВ❗️и вставляете в чат, который Вы создали
-
-4. После копируйте ключи Client ID, Client secret. и вставляете это в чат который вы создали.
-
-5. После того как вы скопировали ключи и номер профиля, нужно перейти в самого бота @SK2_Avito_bot ввести команду /start и нажать на кнопку "Список подключенных аккаунтов". Если вы увидите там свой аккаунт, значит вы сделали все ВЕРНО👍
-
-PS. Инструкции по добавлению Автоответов пока что нет, но там никаких сложностей не должно возникнуть.
-
-Больших продаж всем🚀 Будут вопросы обязательно пишите - Я всегда на связи🔥'''
+    text3 = instruct_third
     keyboard = types.InlineKeyboardMarkup()
     keyboard.add(types.InlineKeyboardButton(text='💵 Проверить подписку',callback_data='check_vip'),types.InlineKeyboardButton(text='➕ Проверить подключеие ', callback_data='check_connection'))
     keyboard.add(types.InlineKeyboardButton(text='Проверить оплату',callback_data='check_money'))
@@ -286,24 +225,7 @@ async def check_vip(callback_query: types.CallbackQuery):
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data == 'check_connection')
 async def check_connection(callback_query: types.CallbackQuery):
-    text = '''✋ Здравствуйте!
-
-
-Пришлите номер профиля Avito.ru!
-
-
-Номер профиля можете найти в личном кабинете слева, либо в меню "Профиль" в моб. приложении!
-
-Client_id можно найти в разделе "Интеграции" по ссылке - https://www.avito.ru/professionals/api
-
-Client_secret можно найти в разделе "Интеграции" по ссылке - https://www.avito.ru/professionals/api
-
-❗️Важно: интегрировать сообщения можно только владельцам максимального / расширенного тарифов!
-
-Шаблон:
-49702411
-LgF3nrObD3ftikUcqPRO
-lgyY2nOjvsN9rcskeqkcEV9L2oDxQWtmqa78Qgig'''
+    text = shablon_text
     keyboard = types.InlineKeyboardMarkup()
     keyboard.add(types.InlineKeyboardButton(text='⬅️ Вернуться назад', callback_data='back_chat_menu'))
     await bot.edit_message_text(
@@ -361,20 +283,10 @@ async def check_money(callback_query: types.CallbackQuery):
         if subscription_end_date is None or subscription_end_date < datetime.datetime.now():
         # Подписка истекла или отсутствует, добавьте месяц к текущей дате
             one_month_later = datetime.datetime.now() + datetime.timedelta(days=30*how_much)
-        
-        # Обновите дату окончания подписки в базе данных
             update_subscription_end_date_in_database(callback_query.message.chat.id, one_month_later)
         
   
-            
-        # Здесь вы можете добавить логику для обновления атрибута test_period_end в базе данных
-        # Например, получите текущее значение test_period_end из базы данных,
-        # добавьте к нему месяц и обновите базу данных новым значением
-        
-        # Например (псевдокод):
-        # current_test_period_end = get_test_period_end_from_database(callback_query.message.chat.id)
-        # new_test_period_end = current_test_period_end + timedelta(days=30)
-        # update_test_period_end_in_database(callback_query.message.chat.id, new_test_period_end)
+
         
     else:
         text += "У вас нет успешных оплат за последний месяц."
@@ -482,29 +394,7 @@ async def req_avito(callback_query: types.CallbackQuery):
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data == 'auto_othcet')
 async def auto_othcet(callback_query: types.CallbackQuery):
-    text = '''Как работать с автоответами
-Автоответы созданы для автоматического общения с клиентами. Есть 3 вида автоответов:
-
-Второй пункт хорошо подходит компаниям, которые работают строго по графику. В "определенный промежуток времени" можете настроить текст для рабочего и нерабочего времени.
-
-1. На первое сообщение. На этом этапе Вы можете запланировать неограченное количество приветственных сообщений подряд. Для этого нужно нажать на кнопку "На первое сообщение", далее ввести текст первого сообщения и нажать на Enter. Если нужен второй текст, то пишем второй текст. Если больше не нужно других текстов нажимаем кнопку "Пропустить". Выйдет системное сообщение "Автоовтеты добавлены" 
- 
-2. В определенный промежуток времени. Для этого нужно ввести для первого текста начальное и конечное время, затем ввести текст для первого автоответа, если нужно запланировать еще и второй автоответ, то вводим начальное и конечное время второго автоответа, затем сам текст. Если не нужен второй текст, тогда нажимаем кнопку "Пропустить".
-Например: у Вас какая-то компания, Вы хотите, чтобы бот отвечал на сообщения клиентов в нерабочее время. Чтобы запланировать такую функцию, нужно нажать на кнопку "В определенный промежуток времени" после этого ввести начальное время по (МСК) "18:00" и затем конечное время "10:00" , далее нужно запланировать текст. 
-
-3. На триггер. Бот будет отвечать, если увидит в сообщении клиента триггер, который вы назначили. Их может быть несколько для одного автоответа. Например: айфон, iphone, яблоко фон. И нет разницы, большие или маленькие буквы. Если бот увидит это слово или словосочетание в сообщении клиента, он сразу ответит ему заготовленным текстом. Если триггеров будет несколько в одном сообщении, бот отправит несколько сообщений. Вы можете эту функцию использовать для удобства и быстрого ответа клиенту. Или вовсе выстроить с ним диалог, выдавая варианты сообщений, которые нужно написать для получения той или иной информации.
-
-Добавить автоответ
-Чтобы создать автоответ, нажмите в меню кнопку «🤖Автоответы», далее «➕Добавить автоответ» и далее пошагово ответьте на сообщения бота.
-
-Удалить автоответ
-Чтобы удалить шаблон, нажмите в меню кнопку «🤖Автоответы», далее «👀Показать автоответы» и далее нажмите «Удалить» под ненужным шаблоном.
-
-Вкл/Выкл
-Чтобы включить или выключить автоответ нажмите на кнопку "вкл" или "выкл"
-
-Редактировать автоответ
-Для редактирования автоответа вам нужно нажать на кнопку "изменить" ввести заного время и сам текст.'''
+    text = work_auto_ans
     keyboard = types.InlineKeyboardMarkup()
     keyboard.add(types.InlineKeyboardButton(text='⬅️ Вернуться назад',callback_data='back_wrapper'))
     await bot.edit_message_text(
@@ -526,16 +416,7 @@ async def test_period(callback_query: types.CallbackQuery):
             with open(os.path.join(image_folder, filename), 'rb') as image_file:
                 await callback_query.message.answer_photo(photo=image_file)
 
-    text = '''Тестовый период
-    Тестовый период дается на ровно 24 часа, для того чтобы Вы успели за это время протестировать все возможные функции. 
-
-    После тестового периода, нужно оплатить бессрочную подписку. После оплаты сможете продолжить Вашу работу
-
-    Что бы воспользоваться данной функцией нужно:
-    1. Нажать в главном меню на кнопку "Тестовый период" (рис.1)
-    2. После нажатия вас система оповестит о выданном тестовом периоде. (рис.2)
-    3. В главном меню Вы можете нажать на кнопку "Проверить подписку" и посмотреть дату окончания тестового периода  (рис.3)
-    4. Для продолжения работы после тестового периода, нужно оплатить бессрочную подписку.'''
+    text = test_periiod_text
     
     # Отправляем текст и клавиатуру
     await bot.send_message(callback_query.message.chat.id, text=text,reply_markup=keyboard)
@@ -581,6 +462,118 @@ async def auto_answera(callback_query: types.CallbackQuery):
         reply_markup=keyboard
     )
 
+@dp.callback_query_handler(lambda callback_query: callback_query.data == 'triggers')
+async def triggers(callback_query: types.CallbackQuery):
+    print('test')
+    conn = sqlite3.connect('my_database.db')
+    cursor = conn.cursor()
+    user_id_telegram = callback_query.message.chat.id
+
+    try:
+
+        # Получаем user_id из таблицы clients
+        cursor.execute('SELECT id FROM clients WHERE id_telegram = ?', (user_id_telegram,))
+        user_id = cursor.fetchone()
+        if user_id:
+            # Если нашли user_id, теперь получаем все чаты, привязанные к этому user_id
+            print(user_id)
+            cursor.execute('SELECT * FROM chats WHERE acc_id = ?', (user_id[0],))
+            chats = cursor.fetchall()
+
+                # В переменной chats теперь хранятся все чаты, привязанные к заданному acc_id
+            for chat in chats:
+                chat_id = chat[1]
+                id_avito = chat[2]
+                client_id = chat[3]
+                client_secret = chat[4]
+                token = chat[5]
+                test_period = chat[6]
+                token = get_token(chat_id)
+                profile = get_profile(token=token)
+                profile_name = profile['name']
+                profile_url = profile['profile_url']
+                chat_info = await bot.get_chat(chat_id)
+                # Формируем текст сообщения
+                message_text = (
+                    f"<b>Профиль:</b> <a href='{profile_url}'>{profile_name}</a>\n"
+                    f"<b>Название группы:</b> <code>{chat_info.title}</code>\n"
+                    f"<b>Номер аккаунта:</b> <code>{user_id_telegram}</code>\n"
+                    f"<b>Client_id:</b> <code>{client_id}</code>\n"
+                    f"<b>Client_secret:</b> <code>{client_secret}</code>"
+                )
+
+                # Создаем кнопку "Выбрать"
+                keyboard = types.InlineKeyboardMarkup()
+                keyboard.add(types.InlineKeyboardButton(text="Выбрать", callback_data=f"trig^{chat_id}"))
+
+                # Отправляем сообщение с разметкой и кнопкой
+                await bot.send_message(callback_query.message.chat.id, text=message_text, parse_mode="html", reply_markup=keyboard)
+
+                # Дальше можно делать что-то с данными о чатах
+
+    except:
+        await bot.send_message(callback_query.message.chat.id,'haha')
+
+
+@dp.callback_query_handler(lambda callback_query: callback_query.data.startswith(('trig^')))
+async def select_callback(callback_query: types.CallbackQuery, state: FSMContext):
+    action_data = callback_query.data.split('^')
+    chat_id = action_data[1]  # Получаем chat_id из action_data
+
+    text = '''📝Введите триггеры, на которые нужно дать ответ. Триггером будет являться слово или словосочетание в сообщение клиента.
+
+    Каждый триггер должен быть на новой строке и отправлены одним сообщением.
+
+    Пример:
+    Какая цена
+    Цена какая
+    Сколько стоит
+    Узнать цену
+    Узнать стоимость'''
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(types.InlineKeyboardButton(text='Отменить', callback_data='stopp'))
+    await bot.send_message(callback_query.message.chat.id, text=text)
+    await state.update_data(chat_id=chat_id)  # Сохраняем chat_id в состоянии FSM
+    await AutoTriggers.WaitingForTrigger.set()
+    async with state.proxy() as data:
+        data['chat_id'] = chat_id
+    await callback_query.message.reply("Введите Триггеры:")
+
+@dp.message_handler(lambda message: message.state == AutoTriggers.WaitingForTrigger)
+async def enter_trigger(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        chat_id = data['chat_id']
+        trigger = message.text
+        await state.update_data(trigger=trigger)
+        await message.reply(f"Теперь введите ответ на триггер '{trigger}':")
+        await AutoTriggers.WaitingForResponse.set()
+
+@dp.message_handler(lambda message: message.state == AutoTriggers.WaitingForResponse)
+async def enter_response(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        chat_id = data['chat_id']
+        trigger = data['trigger']
+        response_text = message.text
+
+        # Здесь вы можете сохранить chat_id, trigger и response_text в таблице auto_responses
+        # Вставьте свой код для работы с базой данных
+        conn = sqlite3.connect('my_database.db')
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO auto_responses (chat_id, trigger, response_text) VALUES (?, ?, ?)",
+                       (str(chat_id), trigger, response_text))
+        conn.commit()
+        conn.close()
+
+        await message.reply(f"Триггер '{trigger}' и его ответ сохранены.")
+        await state.finish()
+
+@dp.message_handler(lambda message: True, state='*')
+async def check_state(message: types.Message, state: FSMContext):
+    state_data = await state.get_data()
+    await message.reply(f"Current state: {state_data}")
+
+
+
 @dp.callback_query_handler(lambda callback_query: callback_query.data == 'add_answer')
 async def add_answer(callback_query: types.CallbackQuery):
     text = '''Выберите, в каком случае будем отправлять сообщение клиенту ⁉️ Будьте внимательны, автоответы будут применены для всех аккаунтов привязанных к боту. Если у вас несколько аккаунтов и вы вы хотите, чтобы в каждом аккаунте была своя логика. Создайте для каждого аккаунта отдельный чат в Telegram и добавьте туда бота для работы с сообщениями.'''
@@ -594,6 +587,9 @@ async def add_answer(callback_query: types.CallbackQuery):
         text=text,
         reply_markup=keyboard
     ) 
+
+
+
 
 #На первое сообщение функция 
 
@@ -778,25 +774,19 @@ async def choose_day(callback_query: types.CallbackQuery, state: FSMContext):
         response_text = data['response_text']
         title = data['title']
         avito_ids = data['avito_ids']
-        selected_days = selected_days_dict.get(chat_id_from_state, [])
-
+        
         if selected_day == "all":
-            if "all" in selected_days:
-                # Если "Выбрать все" уже выбран, уберите его
-                selected_days.remove("all")
-                selected_days.extend(week_days_list)
+            if "all" in selected_days_dict.get(chat_id_from_state, []):
+                selected_days_dict[chat_id_from_state].remove("all")
             else:
-                # Иначе, выберите все дни недели
-                selected_days.extend(week_days_list)
+                selected_days_dict[chat_id_from_state] = week_days_list.copy()
         else:
-            if selected_day in selected_days:
-                # Если день уже выбран, уберите его
-                selected_days.remove(selected_day)
+            if selected_day in selected_days_dict.get(chat_id_from_state, []):
+                selected_days_dict[chat_id_from_state].remove(selected_day)
             else:
-                # Иначе, добавьте день
-                selected_days.append(selected_day)
+                selected_days_dict.setdefault(chat_id_from_state, []).append(selected_day)
 
-        selected_days_dict[chat_id_from_state] = selected_days
+        selected_days = selected_days_dict.get(chat_id_from_state, [])
         updated_markup = get_updated_week_days_keyboard(selected_day, selected_days)
 
         # Проверяем, изменилась ли разметка
@@ -813,7 +803,62 @@ async def choose_day(callback_query: types.CallbackQuery, state: FSMContext):
                                                 message_id=callback_query.message.message_id,
                                                 reply_markup=updated_markup)
 
-    await AutoResponseState.WaitingForConfirmation.set()  # Переходим в состояние ожидания подтверждения
+
+# Обработчик для кнопки "Снять все"
+@dp.callback_query_handler(lambda callback_query: callback_query.data == "choose_day_none", state=AutoResponseState.WaitingForWeekDays)
+async def choose_day_none(callback_query: types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        chat_id_from_state = data['chat_id_for_week_days']
+        response_text = data['response_text']
+        title = data['title']
+        avito_ids = data['avito_ids']
+
+        # Убираем все выбранные дни недели
+        selected_days_dict[chat_id_from_state] = []
+
+        selected_days = selected_days_dict.get(chat_id_from_state, [])
+        updated_markup = get_updated_week_days_keyboard("none", selected_days)
+
+        # Проверяем, изменилась ли разметка
+        if updated_markup.inline_keyboard != callback_query.message.reply_markup.inline_keyboard:
+            # Создаем кнопку "Выбрать все" и "Снять все", если они ещё не добавлены
+            if not any(button.callback_data in ["choose_day_all", "choose_day_none"] for row in updated_markup.inline_keyboard for button in row):
+                updated_markup.row(types.InlineKeyboardButton("Выбрать все", callback_data="choose_day_all"))
+                updated_markup.row(types.InlineKeyboardButton("Снять все", callback_data="choose_day_none"))
+            
+            await bot.edit_message_reply_markup(chat_id=callback_query.message.chat.id,
+                                                message_id=callback_query.message.message_id,
+                                                reply_markup=updated_markup)
+
+        await AutoResponseState.WaitingForConfirmation.set()
+
+# Обработчик для кнопки "Выбрать все"
+@dp.callback_query_handler(lambda callback_query: callback_query.data == "choose_day_all", state=AutoResponseState.WaitingForWeekDays)
+async def choose_day_all(callback_query: types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        chat_id_from_state = data['chat_id_for_week_days']
+        response_text = data['response_text']
+        title = data['title']
+        avito_ids = data['avito_ids']
+
+        # Добавляем все дни недели
+        selected_days_dict[chat_id_from_state] = week_days_list.copy()
+
+        selected_days = selected_days_dict.get(chat_id_from_state, [])
+        updated_markup = get_updated_week_days_keyboard("all", selected_days)
+
+        # Проверяем, изменилась ли разметка
+        if updated_markup.inline_keyboard != callback_query.message.reply_markup.inline_keyboard:
+            # Создаем кнопку "Выбрать все" и "Снять все", если они ещё не добавлены
+            if not any(button.callback_data in ["choose_day_all", "choose_day_none"] for row in updated_markup.inline_keyboard for button in row):
+                updated_markup.row(types.InlineKeyboardButton("Выбрать все", callback_data="choose_day_all"))
+                updated_markup.row(types.InlineKeyboardButton("Снять все", callback_data="choose_day_none"))
+            
+            await bot.edit_message_reply_markup(chat_id=callback_query.message.chat.id,
+                                                message_id=callback_query.message.message_id,
+                                                reply_markup=updated_markup)
+
+        await AutoResponseState.WaitingForConfirmation.set()
 
 # Обработчик для кнопки "Готово"
 @dp.callback_query_handler(lambda callback_query: callback_query.data == "choose_day_done", state=AutoResponseState.WaitingForConfirmation)
@@ -831,16 +876,15 @@ async def choose_day_done(callback_query: types.CallbackQuery, state: FSMContext
             
             for selected_day in selected_days:
                 cursor.execute("INSERT OR REPLACE INTO msgs (title, chat_id, enabled, avito_ids, response_text, week_days) VALUES (?, ?, ?, ?, ?, ?)",
-                               (title, chat_id_from_state, 1, avito_ids, response_text, selected_day))
+                            (title, chat_id_from_state, 1, avito_ids, response_text, ",".join(selected_days)))
             
             conn.commit()
             conn.close()
+        else:
+            await bot.send_message(chat_id_from_state, "Разметка клавиатуры не изменилась.")
 
         await state.finish()
         await bot.send_message(chat_id_from_state, "Настройки автоответа сохранены.")
-
-
-
 
 
 # Функция для создания клавиатуры выбора дней недели
@@ -861,20 +905,15 @@ def get_week_days_keyboard(selected_days=None):
     markup.add(types.InlineKeyboardButton(text="Готово", callback_data="choose_day_done"))
     
     return markup
+
 # Функция для обновления клавиатуры выбора дней недели
 def get_updated_week_days_keyboard(selected_day, selected_days):
-    markup = types.InlineKeyboardMarkup(row_width=3)
+    markup = types.InlineKeyboardMarkup(row_width=4)
     for day in week_days_list:
-        if day == selected_day:
-            # Если день недели выбран, добавляем смайлик ✅
-            markup.add(types.InlineKeyboardButton(text=f'✅ {day}', callback_data=f'choose_day_{day}'))
-        else:
-            # Иначе, добавляем кнопку с днем недели
-            if day in selected_days:
-                # Если день уже выбран, добавляем смайлик ✅
-                markup.add(types.InlineKeyboardButton(text=f'✅ {day}', callback_data=f'choose_day_{day}'))
-            else:
-                markup.add(types.InlineKeyboardButton(text=day, callback_data=f'choose_day_{day}'))
+        emoji = "✅" if day in selected_days else "❌"  # Показываем выбранный день с эмодзи
+        callback_data = f"choose_day_{day}"
+        markup.add(types.InlineKeyboardButton(f"{emoji} {day}", callback_data=callback_data))
+    
     return markup
 
 @dp.message_handler(commands='unread')
@@ -1081,13 +1120,6 @@ async def page_navigation_callback(callback_query: types.CallbackQuery):
 
 
 
-# # Обработчик коллбэков от кнопок
-# @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('send_'))
-# async def process_callback(callback_query: types.CallbackQuery):
-#     user_name = callback_query.data.replace('send_', '')
-#     await bot.send_message(callback_query.from_user.id, f"Вы выбрали пользователя: {user_name}")
-
-
 
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('send^'))
@@ -1215,13 +1247,6 @@ async def action_callback(callback_query: types.CallbackQuery,state: FSMContext)
     )
         callback_query.data = f'send^{chat_id}^{user_id}'
 
-        #await process_callback(callback_query=callback_query)
-
-        # # Создаем одну строку, объединяя текст всех сообщений
-        # chat_text = "\n".join([message['content']['text'] for message in data['messages']])
-
-        # # Отправляем все сообщения одним сообщением
-        # await bot.send_message(callback_query.from_user.id, f"Просмотр чата с пользователем: {user_name}\n\n{chat_text}")
 
     elif action == 'send-message':
 

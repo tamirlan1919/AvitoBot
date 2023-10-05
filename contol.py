@@ -47,12 +47,24 @@ def make_db():
         time TEXT,
         FOREIGN KEY (chat_id) REFERENCES chats (chat_id)
     );
+    
     '''
+
+    create_auto_responses_table_query = '''
+CREATE TABLE IF NOT EXISTS auto_responses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER,
+    trigger TEXT,
+    response_text TEXT,
+    FOREIGN KEY (chat_id) REFERENCES chats (chat_id)
+);
+'''
 
     # Выполнение SQL-запросов для создания таблиц
     cursor.execute(create_clients_table_query)
     cursor.execute(create_chats_table_query)
     cursor.execute(create_msgs_table_query)
+    cursor.execute(create_auto_responses_table_query)
 
     # Сохранение изменений в базе данных
     conn.commit()

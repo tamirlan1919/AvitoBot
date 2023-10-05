@@ -20,6 +20,11 @@ class AutoResponseState(StatesGroup):
     WaitingForConfirmation = State()  # Состояние ожидания подтверждения
 
 
+class AutoTriggers(StatesGroup):
+    WaitingForTrigger = State()  # Ожидание ввода триггера
+    WaitingForResponse = State()  # Ожидание ввода ответа
+
+
 
 class YooMoneySum(StatesGroup):
     waiting_fot_sum = State()
