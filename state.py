@@ -11,14 +11,21 @@ class MyStates(StatesGroup):
 class MyStatesGroup(StatesGroup):
     waiting_for_text = State()  # Состояние для ожидания текста от пользователя 
 
+# Создайте состояние для ожидания ввода заголовка
+class AutoResponseStateTitle(StatesGroup):
+    waiting_for_title = State()
 
-class AutoResponseState(StatesGroup):
-    WaitingForTitle = State()  # Состояние ожидания ввода заголовка
-    WaitingForAvitoIds = State()  # Состояние ожидания ввода ids объявления
-    WaitingForResponseText = State()  # Состояние ожидания ввода текста сообщения
-    WaitingForWeekDays = State()
-    WaitingForConfirmation = State()  # Состояние ожидания подтверждения
+# Создайте состояние для ожидания ввода ids
+class AutoResponseStateIds(StatesGroup):
+    waiting_for_ids = State()
 
+# Создайте состояние для ожидания ввода текста
+class AutoResponseStateText(StatesGroup):
+    waiting_for_text = State()
+
+# Создайте состояние для ожидания выбора даты
+class AutoResponseStateWeekDays(StatesGroup):
+    waiting_for_weekdays = State()
 
 class AutoTriggers(StatesGroup):
     WaitingForTrigger = State()  # Ожидание ввода триггера

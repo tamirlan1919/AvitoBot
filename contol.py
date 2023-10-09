@@ -31,6 +31,8 @@ def make_db():
         client_secret TEXT,
         token TEXT,
         test_period TEXT,
+        current_page INTEGER,
+        current_page_message_id INTEGER,
         FOREIGN KEY (acc_id) REFERENCES clients (id)
 
     );
@@ -187,3 +189,63 @@ def set_personal_token(client_id,client_secret):
         
 
 
+
+
+def get_chats_with_data():
+    conn = sqlite3.connect('my_database.db')  # Замените 'your_database.db' на путь к вашей базе данных
+    cursor = conn.cursor()
+
+    # Выполните SQL-запрос для извлечения чатов с заполненными данными
+    cursor.execute('''
+        SELECT chat_id
+        FROM chats
+        WHERE id_avito IS NOT NULL
+          AND client_id IS NOT NULL
+          AND client_secret IS NOT NULL
+          AND token IS NOT NULL
+    ''')
+
+    chats_with_data = cursor.fetchall()
+
+    conn.close()
+    return chats_with_data
+
+
+
+def get_chats_with_triggers():
+    conn = sqlite3.connect('my_database.db')  # Замените 'your_database.db' на путь к вашей базе данных
+    cursor = conn.cursor()
+
+    # Выполните SQL-запрос для извлечения чатов с заполненными данными
+    cursor.execute('''
+        SELECT chat_id
+        FROM auto_responses
+        WHERE trigger IS NOT NULL
+          AND response_text IS NOT NULL
+
+    ''')
+
+    chats_with_data = cursor.fetchall()
+
+    conn.close()
+    return chats_with_data
+
+
+
+def get_chats_with_msgs():
+    conn = sqlite3.connect('my_database.db')  # Замените 'your_database.db' на путь к вашей базе данных
+    cursor = conn.cursor()
+
+    # Выполните SQL-запрос для извлечения чатов с заполненными данными
+    cursor.execute('''
+        SELECT *
+        FROM msgs
+        WHERE week_days IS NOT NULL
+          AND response_text IS NOT NULL
+
+    ''')
+
+    chats_with_data = cursor.fetchall()
+
+    conn.close()
+    return chats_with_data

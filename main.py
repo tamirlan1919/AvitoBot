@@ -31,6 +31,7 @@ from aiogram import types
 from aiogram.utils import exceptions
 from money_cart import get_sum
 from teext import *
+from config import *
 from aiogram.dispatcher.filters import Command, ChatTypeFilter
 yoomoney_token = "4100117394518969.25C11A278171A9D98CF57B29E20869FE7175F8E5F0D82C642CB12B819214769229B792D693CD7A205D5D8B524294B1E710CECA73FB581A110CD748405B3A3709592F767FB683ACCE256C92453C4EA831F0E9EBA02063DF8DBA8728EE9B2A2CC60AA1EAD2AF79160F273D90F23C06E6E66B7B874261A33FD1BBA66C0A96297EAD"
 
@@ -45,7 +46,8 @@ selected_days_dict ={}
 
 
 # Инициализация бота и диспетчера
-bot = Bot(token=BOT_TOKEN)
+bot = Bot(token=BOT_TOKEN,disable_web_page_preview=True)
+
 memory_storage = MemoryStorage()  # Инициализируем MemoryStorage
 dp = Dispatcher(bot,storage=memory_storage)
 dp.middleware.setup(LoggingMiddleware())
@@ -53,8 +55,7 @@ sent_messages = {}
 sent_welcome_messages = {}
 
 
-current_page = 0
-current_page_message_id = None  # Инициализация переменной
+
 
 
 current_page2 = 0
@@ -67,7 +68,7 @@ image_folder = 'images/test_period'
 
 async def check_new_messages(message:types.Message):
     while True:
-        # Здесь вы можете добавить логику для проверки наличия новых сообщений.
+        # Здесь вы можете добавить логику для прstart_textоверки наличия новых сообщений.
         user_id = get_user_id(message.chat.id)
         token = get_token(message.chat.id)
         avito_data = get_avito_unread_data(token=token, user_id=user_id)
@@ -84,8 +85,8 @@ async def check_new_messages(message:types.Message):
 @dp.message_handler(Command("start") & ChatTypeFilter(types.ChatType.PRIVATE))
 async def start(message: types.Message):
     text = start_text
-    await bot.send_message(message.chat.id,text=text)
-    with open('video.mp4', 'rb') as video_file:
+    await bot.send_message(message.chat.id,text=text,parse_mode='html')
+    with open('video.gif', 'rb') as video_file:
         await bot.send_video(chat_id=message.chat.id, video=video_file)
     text1 = instruct_first
     user_id = message.chat.id
@@ -123,7 +124,7 @@ async def start(message: types.Message):
     conn.close()
 
 
-    await bot.send_message(message.chat.id, text=text1,reply_markup=keyboard)
+    await bot.send_message(message.chat.id, text=text1,reply_markup=keyboard,parse_mode='html')
 
 @dp.message_handler(Command("start") & ChatTypeFilter(types.ChatType.GROUP))
 async def start_group(message: types.Message):
@@ -154,21 +155,23 @@ async def start_group(message: types.Message):
     conn.close()
 
     text1 = before_reading
-
-    await bot.send_message(message.chat.id,text=text1)
+    await bot.send_message(message.chat.id,'🎉 Добро пожаловать в наш бот! 🤖')
+    #await bot.send_message(message.chat.id,text='text1')
     with open('video2.mp4', 'rb') as video_file:
         await bot.send_video(chat_id=message.chat.id, video=video_file)    
     text2 = instruct_second
     
-    await bot.send_message(message.chat.id,text=text2)
+    await bot.send_message(message.chat.id,text=text2,parse_mode='html')
     with open('video3.mp4', 'rb') as video_file:
         await bot.send_video(chat_id=message.chat.id, video=video_file)    
 
     text3 = instruct_third
+    await bot.send_message(message.chat.id,text=text3)
     keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton(text='💵 Проверить подписку',callback_data='check_vip'),types.InlineKeyboardButton(text='➕ Проверить подключеие ', callback_data='check_connection'))
-    keyboard.add(types.InlineKeyboardButton(text='Проверить оплату',callback_data='check_money'))
-    await bot.send_message(message.chat.id,text=text3,reply_markup=keyboard)
+    keyboard.add(types.InlineKeyboardButton(text='📋 Проверить статус подписки',callback_data='check_vip'))
+    keyboard.add(types.InlineKeyboardButton(text='💳 Проверить платежи', callback_data='check_money'))
+    keyboard.add(types.InlineKeyboardButton(text='➕ Подключить аккаунт',callback_data='check_connection'))
+    await bot.send_message(message.chat.id,text='Выберите опцию',reply_markup=keyboard)
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data == 'check_vip')
 async def check_vip(callback_query: types.CallbackQuery):
@@ -214,7 +217,6 @@ async def check_vip(callback_query: types.CallbackQuery):
     else:
         text = f"<b>У вас активная подписка до</b> {subscription_end_time.strftime('%Y-%m-%d %H:%M:%S')}"
         sum = get_sum(tg_id=callback_query.message.chat.id)
-        keyboard.add(types.InlineKeyboardButton(text='Продлить имеющуся подписку',url=sum))
         await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
@@ -307,8 +309,9 @@ async def check_money(callback_query: types.CallbackQuery):
 @dp.callback_query_handler(lambda callback_query: callback_query.data == 'back_chat_menu')
 async def back_chat_menu(callback_query: types.CallbackQuery):
     keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton(text='💵 Проверить подписку',callback_data='check_vip'),types.InlineKeyboardButton(text='➕ Проверить подключеие ', callback_data='check_connection'))
-    keyboard.add(types.InlineKeyboardButton(text='Проверить оплату',callback_data='check_money'))
+    keyboard.add(types.InlineKeyboardButton(text='📋 Проверить статус подписки',callback_data='check_vip'))
+    keyboard.add(types.InlineKeyboardButton(text='💳 Проверить платежи', callback_data='check_money'))
+    keyboard.add(types.InlineKeyboardButton(text='➕ Подключить аккаунт',callback_data='check_connection'))
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
@@ -462,6 +465,23 @@ async def auto_answera(callback_query: types.CallbackQuery):
         reply_markup=keyboard
     )
 
+
+
+@dp.callback_query_handler(lambda callback_query: callback_query.data == 'add_answer')
+async def add_answer(callback_query: types.CallbackQuery):
+    text = '''Выберите, в каком случае будем отправлять сообщение клиенту ⁉️ Будьте внимательны, автоответы будут применены для всех аккаунтов привязанных к боту. Если у вас несколько аккаунтов и вы вы хотите, чтобы в каждом аккаунте была своя логика. Создайте для каждого аккаунта отдельный чат в Telegram и добавьте туда бота для работы с сообщениями.'''
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(types.InlineKeyboardButton(text='На первое сообщение',callback_data='first_message'),types.InlineKeyboardButton(text='В определенный промежуток времени',callback_data='time_message'))
+    keyboard.add(types.InlineKeyboardButton(text='Триггеры',callback_data='triggers'))
+    keyboard.add(types.InlineKeyboardButton(text='⬅️ Вернуться в главное меню',callback_data='back_main'))
+    await bot.edit_message_text(
+        chat_id=callback_query.message.chat.id,
+        message_id=callback_query.message.message_id,
+        text=text,
+        reply_markup=keyboard
+    ) 
+
+
 @dp.callback_query_handler(lambda callback_query: callback_query.data == 'triggers')
 async def triggers(callback_query: types.CallbackQuery):
     print('test')
@@ -532,15 +552,22 @@ async def select_callback(callback_query: types.CallbackQuery, state: FSMContext
     Узнать стоимость'''
     keyboard = types.InlineKeyboardMarkup()
     keyboard.add(types.InlineKeyboardButton(text='Отменить', callback_data='stopp'))
-    await bot.send_message(callback_query.message.chat.id, text=text)
+    await bot.send_message(callback_query.message.chat.id, text=text,reply_markup=keyboard)
     await state.update_data(chat_id=chat_id)  # Сохраняем chat_id в состоянии FSM
     await AutoTriggers.WaitingForTrigger.set()
     async with state.proxy() as data:
         data['chat_id'] = chat_id
     await callback_query.message.reply("Введите Триггеры:")
 
-@dp.message_handler(lambda message: message.state == AutoTriggers.WaitingForTrigger)
+@dp.callback_query_handler(lambda callback_query: callback_query.data =='stopp', state=AutoTriggers)
+async def stopp(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.finish()
+    await bot.send_message(callback_query.message.chat.id,'Действие отменено')
+
+
+@dp.message_handler(state=AutoTriggers.WaitingForTrigger)
 async def enter_trigger(message: types.Message, state: FSMContext):
+    # Ваш код для обработки триггера
     async with state.proxy() as data:
         chat_id = data['chat_id']
         trigger = message.text
@@ -548,45 +575,35 @@ async def enter_trigger(message: types.Message, state: FSMContext):
         await message.reply(f"Теперь введите ответ на триггер '{trigger}':")
         await AutoTriggers.WaitingForResponse.set()
 
-@dp.message_handler(lambda message: message.state == AutoTriggers.WaitingForResponse)
+
+@dp.message_handler(state=AutoTriggers.WaitingForResponse)
 async def enter_response(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         chat_id = data['chat_id']
         trigger = data['trigger']
         response_text = message.text
 
-        # Здесь вы можете сохранить chat_id, trigger и response_text в таблице auto_responses
-        # Вставьте свой код для работы с базой данных
+        # Проверяем, существует ли запись для данного chat_id и trigger
         conn = sqlite3.connect('my_database.db')
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO auto_responses (chat_id, trigger, response_text) VALUES (?, ?, ?)",
-                       (str(chat_id), trigger, response_text))
+        cursor.execute("SELECT * FROM auto_responses WHERE chat_id=?", (str(chat_id), ))
+        existing_record = cursor.fetchone()
+        print('existing ', existing_record)
+        if existing_record:
+            # Если запись существует, обновляем её
+            print('Обновлено')
+            cursor.execute("UPDATE auto_responses SET trigger=?, response_text=?  WHERE chat_id=?",
+                           (trigger, response_text, str(chat_id)))
+        else:
+            # Если запись не существует, создаем новую
+            cursor.execute("INSERT INTO auto_responses (chat_id, trigger, response_text) VALUES (?, ?, ?)",
+                           (str(chat_id), trigger, response_text))
+
         conn.commit()
         conn.close()
 
-        await message.reply(f"Триггер '{trigger}' и его ответ сохранены.")
+        await message.reply(f"Триггер '{trigger}' и его ответ обновлены.")
         await state.finish()
-
-@dp.message_handler(lambda message: True, state='*')
-async def check_state(message: types.Message, state: FSMContext):
-    state_data = await state.get_data()
-    await message.reply(f"Current state: {state_data}")
-
-
-
-@dp.callback_query_handler(lambda callback_query: callback_query.data == 'add_answer')
-async def add_answer(callback_query: types.CallbackQuery):
-    text = '''Выберите, в каком случае будем отправлять сообщение клиенту ⁉️ Будьте внимательны, автоответы будут применены для всех аккаунтов привязанных к боту. Если у вас несколько аккаунтов и вы вы хотите, чтобы в каждом аккаунте была своя логика. Создайте для каждого аккаунта отдельный чат в Telegram и добавьте туда бота для работы с сообщениями.'''
-    keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton(text='На первое сообщение',callback_data='first_message'),types.InlineKeyboardButton(text='В определенный промежуток времени',callback_data='time_message'))
-    keyboard.add(types.InlineKeyboardButton(text='Триггеры',callback_data='triggers'))
-    keyboard.add(types.InlineKeyboardButton(text='⬅️ Вернуться в главное меню',callback_data='back_main'))
-    await bot.edit_message_text(
-        chat_id=callback_query.message.chat.id,
-        message_id=callback_query.message.message_id,
-        text=text,
-        reply_markup=keyboard
-    ) 
 
 
 
@@ -699,7 +716,6 @@ async def spisok(callback_query: types.CallbackQuery):
 
                 # Создаем кнопку "Выбрать"
                 keyboard = types.InlineKeyboardMarkup()
-                keyboard.add(types.InlineKeyboardButton(text="Выбрать", callback_data=f"select^{chat_id}"))
 
                 # Отправляем сообщение с разметкой и кнопкой
                 await bot.send_message(callback_query.message.chat.id, text=message_text, parse_mode="html", reply_markup=keyboard)
@@ -717,204 +733,138 @@ async def spisok(callback_query: types.CallbackQuery):
 
 #Состояния для ввода первого сообщения
 
-# Обработчик для начала установки настроек автоответа
-@dp.callback_query_handler(lambda callback_query: callback_query.data.startswith(('select^')))
-async def select_callback(callback_query: types.CallbackQuery,state: FSMContext):
-    action_data = callback_query.data.split('^')
-    chat_id = action_data[1]  # Получаем chat_id из action_data
-    await state.update_data(chat_id=chat_id)  # Сохраняем chat_id в состоянии FSM
-    await AutoResponseState.WaitingForTitle.set()
-    await callback_query.message.reply("Введите заголовок автоответа:")
 
-
-# Обработчик для ввода заголовка
-@dp.message_handler(lambda message: message.text, state=AutoResponseState.WaitingForTitle)
-async def enter_title(message: Message, state: FSMContext):
-    async with state.proxy() as data:
-        data['title'] = message.text
-    await AutoResponseState.WaitingForAvitoIds.set()
-    await message.reply("Введите ids объявления:")
-
-# Обработчик для ввода ids объявления
-@dp.message_handler(lambda message: message.text, state=AutoResponseState.WaitingForAvitoIds)
-async def enter_avito_ids(message: Message, state: FSMContext):
-    async with state.proxy() as data:
-        data['avito_ids'] = message.text
-    await AutoResponseState.WaitingForResponseText.set()
-    await message.reply("Введите текст сообщения:")
-
-# Обработчик для ввода текста сообщения
-@dp.message_handler(lambda message: message.text, state=AutoResponseState.WaitingForResponseText)
-async def enter_response_text(message: Message, state: FSMContext):
-    chat_id = message.chat.id
-
-    async with state.proxy() as data:
-        chat_id_from_state = data['chat_id']  # Получаем chat_id из состояния FSM
-        title = data['title']
-        avito_ids = data['avito_ids']
-        response_text = message.text
-        
-        # Добавляем состояние для выбора дней недели
-        await AutoResponseState.WaitingForWeekDays.set()
-        
-        # Создаем клавиатуру для выбора дней недели
-        markup = get_week_days_keyboard(data.get("selected_days", []))
-        await message.reply("Выберите дни недели:", reply_markup=markup)
-        
-        # Сохраняем данные во временных переменных
-        data['response_text'] = response_text
-        data['chat_id_for_week_days'] = chat_id_from_state
-
-
-@dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('choose_day_'), state=AutoResponseState.WaitingForWeekDays)
+# Обработчик для выбора дней недели
+# Обработчик для выбора дней недели
+@dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('choose_day_'), state=AutoResponseStateWeekDays.waiting_for_weekdays)
 async def choose_day(callback_query: types.CallbackQuery, state: FSMContext):
     selected_day = callback_query.data.split('_')[2]
     async with state.proxy() as data:
-        chat_id_from_state = data['chat_id_for_week_days']
-        response_text = data['response_text']
-        title = data['title']
-        avito_ids = data['avito_ids']
-        
-        if selected_day == "all":
-            if "all" in selected_days_dict.get(chat_id_from_state, []):
-                selected_days_dict[chat_id_from_state].remove("all")
-            else:
-                selected_days_dict[chat_id_from_state] = week_days_list.copy()
-        else:
-            if selected_day in selected_days_dict.get(chat_id_from_state, []):
-                selected_days_dict[chat_id_from_state].remove(selected_day)
-            else:
-                selected_days_dict.setdefault(chat_id_from_state, []).append(selected_day)
+        chat_id = callback_query.message.chat.id
+        chat_id_from_state = data.get('chat_id', chat_id)
+        title = data.get('title')
+        avito_ids = data.get('avito_ids')
+        response_text = data.get('response_text')
 
-        selected_days = selected_days_dict.get(chat_id_from_state, [])
-        updated_markup = get_updated_week_days_keyboard(selected_day, selected_days)
-
-        # Проверяем, изменилась ли разметка
-        if updated_markup.inline_keyboard != callback_query.message.reply_markup.inline_keyboard:
-            # Создаем кнопку "Выбрать все", если она ещё не добавлена
-            if not any(button.callback_data == "choose_day_all" for row in updated_markup.inline_keyboard for button in row):
-                updated_markup.row(types.InlineKeyboardButton("Выбрать все", callback_data="choose_day_all"))
+        if selected_day == "done":
+            # Выход из состояния выбора дней недели
+            await state.finish()
+            await bot.send_message(chat_id_from_state, "Настройки автоответа сохранены.")
             
-            # Создаем кнопку "Готово", если она ещё не добавлена
-            if not any(button.callback_data == "choose_day_done" for row in updated_markup.inline_keyboard for button in row):
-                updated_markup.row(types.InlineKeyboardButton("Готово", callback_data="choose_day_done"))
-            
-            await bot.edit_message_reply_markup(chat_id=callback_query.message.chat.id,
-                                                message_id=callback_query.message.message_id,
-                                                reply_markup=updated_markup)
-
-
-# Обработчик для кнопки "Снять все"
-@dp.callback_query_handler(lambda callback_query: callback_query.data == "choose_day_none", state=AutoResponseState.WaitingForWeekDays)
-async def choose_day_none(callback_query: types.CallbackQuery, state: FSMContext):
-    async with state.proxy() as data:
-        chat_id_from_state = data['chat_id_for_week_days']
-        response_text = data['response_text']
-        title = data['title']
-        avito_ids = data['avito_ids']
-
-        # Убираем все выбранные дни недели
-        selected_days_dict[chat_id_from_state] = []
-
-        selected_days = selected_days_dict.get(chat_id_from_state, [])
-        updated_markup = get_updated_week_days_keyboard("none", selected_days)
-
-        # Проверяем, изменилась ли разметка
-        if updated_markup.inline_keyboard != callback_query.message.reply_markup.inline_keyboard:
-            # Создаем кнопку "Выбрать все" и "Снять все", если они ещё не добавлены
-            if not any(button.callback_data in ["choose_day_all", "choose_day_none"] for row in updated_markup.inline_keyboard for button in row):
-                updated_markup.row(types.InlineKeyboardButton("Выбрать все", callback_data="choose_day_all"))
-                updated_markup.row(types.InlineKeyboardButton("Снять все", callback_data="choose_day_none"))
-            
-            await bot.edit_message_reply_markup(chat_id=callback_query.message.chat.id,
-                                                message_id=callback_query.message.message_id,
-                                                reply_markup=updated_markup)
-
-        await AutoResponseState.WaitingForConfirmation.set()
-
-# Обработчик для кнопки "Выбрать все"
-@dp.callback_query_handler(lambda callback_query: callback_query.data == "choose_day_all", state=AutoResponseState.WaitingForWeekDays)
-async def choose_day_all(callback_query: types.CallbackQuery, state: FSMContext):
-    async with state.proxy() as data:
-        chat_id_from_state = data['chat_id_for_week_days']
-        response_text = data['response_text']
-        title = data['title']
-        avito_ids = data['avito_ids']
-
-        # Добавляем все дни недели
-        selected_days_dict[chat_id_from_state] = week_days_list.copy()
-
-        selected_days = selected_days_dict.get(chat_id_from_state, [])
-        updated_markup = get_updated_week_days_keyboard("all", selected_days)
-
-        # Проверяем, изменилась ли разметка
-        if updated_markup.inline_keyboard != callback_query.message.reply_markup.inline_keyboard:
-            # Создаем кнопку "Выбрать все" и "Снять все", если они ещё не добавлены
-            if not any(button.callback_data in ["choose_day_all", "choose_day_none"] for row in updated_markup.inline_keyboard for button in row):
-                updated_markup.row(types.InlineKeyboardButton("Выбрать все", callback_data="choose_day_all"))
-                updated_markup.row(types.InlineKeyboardButton("Снять все", callback_data="choose_day_none"))
-            
-            await bot.edit_message_reply_markup(chat_id=callback_query.message.chat.id,
-                                                message_id=callback_query.message.message_id,
-                                                reply_markup=updated_markup)
-
-        await AutoResponseState.WaitingForConfirmation.set()
-
-# Обработчик для кнопки "Готово"
-@dp.callback_query_handler(lambda callback_query: callback_query.data == "choose_day_done", state=AutoResponseState.WaitingForConfirmation)
-async def choose_day_done(callback_query: types.CallbackQuery, state: FSMContext):
-    async with state.proxy() as data:
-        chat_id_from_state = data['chat_id_for_week_days']
-        response_text = data['response_text']
-        title = data['title']
-        avito_ids = data['avito_ids']
-        selected_days = selected_days_dict.get(chat_id_from_state, [])
-        
-        if selected_days:
+            # Выполните здесь операцию вставки в базу данных
             conn = sqlite3.connect('my_database.db')
             cursor = conn.cursor()
-            
-            for selected_day in selected_days:
-                cursor.execute("INSERT OR REPLACE INTO msgs (title, chat_id, enabled, avito_ids, response_text, week_days) VALUES (?, ?, ?, ?, ?, ?)",
-                            (title, chat_id_from_state, 1, avito_ids, response_text, ",".join(selected_days)))
-            
+            selected_days = data.get('selected_days', [])
+            week_days_string = ",".join(selected_days)  # Строка, где дни недели разделены запятыми
+            cursor.execute("INSERT OR REPLACE INTO msgs (title, chat_id, enabled, week_days, avito_ids, response_text) VALUES (?, ?, ?, ?, ?, ?)",
+                           (title, chat_id_from_state, 1, week_days_string, avito_ids, response_text))
             conn.commit()
             conn.close()
+            
         else:
-            await bot.send_message(chat_id_from_state, "Разметка клавиатуры не изменилась.")
+            # Обработка выбора дня недели
+            selected_days = data.get('selected_days', [])
+            if selected_day == "all":
+                selected_days = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
+            elif selected_day in selected_days:
+                selected_days.remove(selected_day)
+            else:
+                selected_days.append(selected_day)
 
-        await state.finish()
-        await bot.send_message(chat_id_from_state, "Настройки автоответа сохранены.")
-
-
+            data['selected_days'] = selected_days
+            updated_markup = get_updated_week_days_keyboard(selected_days)
+            await bot.edit_message_reply_markup(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id, reply_markup=updated_markup)
 # Функция для создания клавиатуры выбора дней недели
-def get_week_days_keyboard(selected_days=None):
-    markup = types.InlineKeyboardMarkup(row_width=3)
-    for day in week_days_list:
-        if day in selected_days:
-            # Если день выбран, добавляем смайлик ✅
-            markup.add(types.InlineKeyboardButton(text=f'✅ {day}', callback_data=f'choose_day_{day}'))
-        else:
-            # Иначе, добавляем кнопку с днем недели
-            markup.add(types.InlineKeyboardButton(text=day, callback_data=f'choose_day_{day}'))
-    
-    # Создаем кнопку для выбора всех дней
-    markup.add(types.InlineKeyboardButton(text="Выбрать все", callback_data="choose_day_all"))
-    
-    # Создаем кнопку "Готово"
-    markup.add(types.InlineKeyboardButton(text="Готово", callback_data="choose_day_done"))
-    
-    return markup
+def get_week_days_keyboard(selected_days):
+    markup = types.InlineKeyboardMarkup(row_width=4)  # Устанавливаем row_width на 4, чтобы было по два дня недели в строке
+    days = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
 
-# Функция для обновления клавиатуры выбора дней недели
-def get_updated_week_days_keyboard(selected_day, selected_days):
-    markup = types.InlineKeyboardMarkup(row_width=4)
-    for day in week_days_list:
-        emoji = "✅" if day in selected_days else "❌"  # Показываем выбранный день с эмодзи
-        callback_data = f"choose_day_{day}"
-        markup.add(types.InlineKeyboardButton(f"{emoji} {day}", callback_data=callback_data))
-    
+    # Добавляем кнопку "Выбрать все"
+    select_all_callback_data = "choose_day_all"
+    select_all_text = "Выбрать все ✅" if all(day in selected_days for day in days) else "Выбрать все ❌"
+    markup.add(types.InlineKeyboardButton(text=select_all_text, callback_data=select_all_callback_data))
+
+    # Разбиваем дни недели на две строки
+    for i in range(0, len(days), 4):
+        row = days[i:i + 4]
+        row_buttons = [
+            types.InlineKeyboardButton(
+                text=f'✅ {day}' if day in selected_days else f'❌ {day}',
+                callback_data=f'choose_day_{day}'
+            ) for day in row
+        ]
+        markup.row(*row_buttons)
+
+    # Добавляем кнопку "Готово"
+    markup.add(types.InlineKeyboardButton(text="Готово", callback_data="choose_day_done"))
     return markup
+# Функция для обновления клавиатуры выбора дней недели
+def get_updated_week_days_keyboard(selected_days):
+    markup = types.InlineKeyboardMarkup(row_width=4)  # Устанавливаем row_width на 4, чтобы было по два дня недели в строке
+    days = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
+
+    # Добавляем кнопку "Выбрать все"
+    select_all_callback_data = "choose_day_all"
+    select_all_text = "Выбрать все ✅" if all(day in selected_days for day in days) else "Выбрать все ❌"
+    markup.add(types.InlineKeyboardButton(text=select_all_text, callback_data=select_all_callback_data))
+
+    # Разбиваем дни недели на две строки
+    for i in range(0, len(days), 4):
+        row = days[i:i + 4]
+        row_buttons = [
+            types.InlineKeyboardButton(
+                text=f'✅ {day}' if day in selected_days else f'❌ {day}',
+                callback_data=f'choose_day_{day}'
+            ) for day in row
+        ]
+        markup.row(*row_buttons)
+
+    # Добавляем кнопку "Готово"
+    markup.add(types.InlineKeyboardButton(text="Готово", callback_data="choose_day_done"))
+    return markup
+# Обработчик для кнопки "Выбрать все"
+@dp.callback_query_handler(lambda callback_query: callback_query.data == "choose_day_all", state=AutoResponseStateWeekDays.waiting_for_weekdays)
+async def choose_day_all(callback_query: types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        data['selected_days'] = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
+        updated_markup = get_updated_week_days_keyboard(data['selected_days'])
+        await bot.edit_message_reply_markup(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id, reply_markup=updated_markup)
+
+
+# Обработчик для начала установки настроек автоответа
+@dp.callback_query_handler(lambda callback_query: callback_query.data.startswith(('select^')))
+async def select_callback(callback_query: types.CallbackQuery, state: FSMContext):
+    action_data = callback_query.data.split('^')
+    chat_id = action_data[1]  # Получаем chat_id из action_data
+    await state.update_data(chat_id=chat_id)  # Сохраняем chat_id в состоянии FSM
+    await AutoResponseStateTitle.waiting_for_title.set()
+    await callback_query.message.reply("Введите заголовок автоответа:")
+
+# Обработчик для ввода заголовка
+@dp.message_handler(state=AutoResponseStateTitle.waiting_for_title)
+async def enter_title(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['title'] = message.text
+    await AutoResponseStateIds.waiting_for_ids.set()
+    await message.answer("Введите ids объявления:")
+
+# Обработчик для ввода ids объявления
+@dp.message_handler(state=AutoResponseStateIds.waiting_for_ids)
+async def enter_avito_ids(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['avito_ids'] = message.text
+    await AutoResponseStateText.waiting_for_text.set()
+    await message.answer("Введите текст сообщения:")
+
+# Обработчик для ввода текста сообщения
+@dp.message_handler(state=AutoResponseStateText.waiting_for_text)
+async def enter_response_text(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['response_text'] = message.text
+    await AutoResponseStateWeekDays.waiting_for_weekdays.set()
+    markup = get_week_days_keyboard([])
+    await message.answer("Выберите дни недели, для которых будет активен автоответ:", reply_markup=markup)
+
 
 @dp.message_handler(commands='unread')
 async def unread_data(message: types.Message):
@@ -1005,8 +955,26 @@ async def unread_data(message: types.Message):
 
 @dp.message_handler(Command("data") & ChatTypeFilter(types.ChatType.GROUP))
 async def get_data(message: types.Message, just = None):
-    global current_page
-    global current_page_message_id
+    current_page = 0
+    current_page_message_id = None  # Инициализация переменной
+    conn = sqlite3.connect('my_database.db')
+    cursor = conn.cursor()
+    message_id = message.message_id
+    # Запрос текущей страницы и ID последнего сообщения для данного чата
+    chat_id = message.chat.id  # Используйте актуальное значение chat_id
+    cursor.execute("SELECT current_page, current_page_message_id FROM chats WHERE chat_id = ?", (chat_id,))
+    result = cursor.fetchone()
+    print(result)
+    # Если есть результат, извлеките текущую страницу и ID сообщения
+    if result[0] and result[1]:
+        current_page, current_page_message_id = result[0],result[1]
+    else:
+        print('сюда')
+        # Если нет результатов, установите начальные значения
+        current_page = 0
+        current_page_message_id = None
+    print(current_page,current_page_message_id,type(current_page),type(current_page_message_id))
+
     # Define the number of contacts to display per page
     contacts_per_page = 6
     keyboard = types.InlineKeyboardMarkup(row_width=3)
@@ -1039,6 +1007,7 @@ async def get_data(message: types.Message, just = None):
 
         # Check if the current page is out of bounds
         if current_page >= total_pages:
+            
             current_page = 0
 
         # Calculate the start and end indices for slicing
@@ -1075,7 +1044,12 @@ async def get_data(message: types.Message, just = None):
             keyboard.add(*buttons)
 
         # Check if there's an existing message to edit
-        if current_page_message_id and just==None:
+        if message.text == '/data':
+            message = await bot.send_message(chat_id=message.chat.id, text="Выберите пользователя:", reply_markup=keyboard)
+            current_page_message_id = message.message_id
+            cursor.execute("UPDATE chats SET current_page_message_id = ? WHERE chat_id = ?", (current_page_message_id, message.chat.id))
+            conn.commit()
+        elif current_page_message_id and just==None:
 
             try:
                 await bot.edit_message_text(chat_id=message.chat.id, message_id=current_page_message_id,
@@ -1086,38 +1060,67 @@ async def get_data(message: types.Message, just = None):
                 await bot.delete_message(chat_id=message.chat.id, message_id=current_page_message_id)
                 message = await bot.send_message(chat_id=message.chat.id, text="Выберите пользователя:", reply_markup=keyboard)
                 current_page_message_id = message.message_id
+                cursor.execute("UPDATE chats SET current_page_message_id = ? WHERE chat_id = ?", (current_page_message_id, chat_id))
+                conn.commit()
         elif current_page_message_id and just=='response':
                 try:
                     await bot.send_message(chat_id=message.chat.id, message_id=current_page_message_id,
                                                 text="Выберите пользователя:", reply_markup=keyboard)
+                    
                 except aiogram.utils.exceptions.MessageNotModified:
                     # Если сообщение не было изменено, просто пропустите ошибку
                         # Если сообщение не было изменено, удаляем предыдущее сообщение и отправляем новое
                     await bot.delete_message(chat_id=message.chat.id, message_id=current_page_message_id)
                     message = await bot.send_message(chat_id=message.chat.id, text="Выберите пользователя:", reply_markup=keyboard)
                     current_page_message_id = message.message_id
+                    cursor.execute("UPDATE chats SET current_page_message_id = ? WHERE chat_id = ?", (current_page_message_id, chat_id))
+                    conn.commit()
+    
         else:
             # Send the initial message with the contacts and navigation buttons
+            print('ппоал')
             message = await bot.send_message(chat_id=message.chat.id, text="Выберите пользователя:", reply_markup=keyboard)
             current_page_message_id = message.message_id
+            cursor.execute("UPDATE chats SET current_page_message_id = ? WHERE chat_id = ?", (current_page_message_id, message.chat.id))
+            conn.commit()
 
     else:
         await message.answer("Произошла ошибка при получении данных из Avito.")
 
+    conn.close()
 
-
-
-# Add a callback handler for page navigation
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('page_'))
 async def page_navigation_callback(callback_query: types.CallbackQuery):
-    global current_page  # Declare that we are using the global current_page variable
-    global current_page_message_id  # Declare a global variable to store the message ID
     page_number = int(callback_query.data.split('_')[1])
-    current_page = page_number  # Update the current page
-    # Trigger a refresh of the data
+    
+    # Получите chat_id из callback_query
+    chat_id = callback_query.message.chat.id
+    
+    # Подключение к базе данных
+    conn = sqlite3.connect('my_database.db')
+    cursor = conn.cursor()
+
+    # Извлеките актуальные данные из таблицы chats для данного чата
+    cursor.execute("SELECT current_page, current_page_message_id FROM chats WHERE chat_id = ?", (chat_id,))
+    result = cursor.fetchone()
+    
+    # Если есть результат, извлеките текущую страницу и ID сообщения
+    if result:
+        current_page, current_page_message_id = result
+    else:
+        # Если нет результатов, установите начальные значения
+        current_page = 0
+        current_page_message_id = None
+
+    # Обновите данные в таблице chats для данного чата
+    cursor.execute("UPDATE chats SET current_page = ?, current_page_message_id = ? WHERE chat_id = ?", (page_number, current_page_message_id, chat_id))
+    conn.commit()
+
+    # Закрытие соединения
+    conn.close()
+
+    # Теперь можно обновить данные в функции get_data с использованием chat_id, current_page и current_page_message_id
     await get_data(callback_query.message)
-
-
 
 
 
@@ -1186,13 +1189,40 @@ async def action_callback(callback_query: types.CallbackQuery,state: FSMContext)
         pass
 
     if action == 'back':
-        global current_page  # Declare that we are using the global current_page variable
-        global current_page_message_id  # Declare a global variable to store the message ID
+        current_page = 0
+        current_page_message_id = None
         callback_query.data = f'page_{current_page}'
-        page_number = int(callback_query.data.split('_')[1])
-        current_page = page_number  # Update the current page
-        # Trigger a refresh of the data
+        page_number = int(callback_query.data.split('_')[1])        
+        # Получите chat_id из callback_query
+        chat_id = callback_query.message.chat.id
+
+        # Подключение к базе данных
+        conn = sqlite3.connect('my_database.db')
+        cursor = conn.cursor()
+
+        # Извлеките актуальные данные из таблицы chats для данного чата
+        cursor.execute("SELECT current_page, current_page_message_id FROM chats WHERE chat_id = ?", (chat_id,))
+        result = cursor.fetchone()
+        
+        # Если есть результат, извлеките текущую страницу и ID сообщения
+        if result[0] and result[1]:
+            current_page, current_page_message_id = result[0],result[1]
+        else:
+            # Если нет результатов, установите начальные значения
+            current_page = 0
+            current_page_message_id = None
+
+        # Обновите данные в таблице chats для данного чата
+        cursor.execute("UPDATE chats SET current_page = ?, current_page_message_id = ? WHERE chat_id = ?", (page_number, current_page_message_id, chat_id))
+        conn.commit()
+
+        # Закрытие соединения
+        conn.close()
+        callback_query.data = f'page_{current_page}'
+
+        # Теперь можно обновить данные в функции get_data с использованием chat_id, current_page и current_page_message_id
         await get_data(callback_query.message,just='responce')
+
 
     elif action == 'view-chat':
         # Обработка действия "Посмотреть чат"
@@ -1296,7 +1326,7 @@ async def process_text(message: Message, state: FSMContext):
 
 @dp.message_handler(content_types=types.ContentTypes.TEXT, chat_type=types.ChatType.GROUP)
 async def check_pattern(message: types.Message):
-    if message.text.startswith("Шаблон"):
+    if message.text.startswith("Шаблон:"):
         # Если сообщение начинается с "Шаблон", выполните нужные действия
         lst = message.text.split('\n')
         print(lst)
@@ -1326,7 +1356,6 @@ async def check_pattern(message: types.Message):
                     cursor.execute('UPDATE chats SET id_avito = ?, client_id = ?, client_secret = ?, token = ?  WHERE chat_id = ?',
                                 (lst[1], lst[2], lst[3], token, message.chat.id))
                     conn.commit()
-                    asyncio.create_task(background_task(message.chat.id))
             else:
                 if test_period <= datetime.datetime.now():
                     keyboard = types.InlineKeyboardMarkup()
@@ -1340,7 +1369,7 @@ async def check_pattern(message: types.Message):
                                 (message.chat.id, lst[1], lst[2], lst[3], token))
                     
                     conn.commit()
-                    asyncio.create_task(background_task(message.chat.id))
+                   
             
             # Сохраняем изменения в базе данных
 
@@ -1586,49 +1615,50 @@ async def process_text(message: Message, state: FSMContext):
 async def get_unread_messages(chat_id):
     avito_id = get_user_id(chat_id)
     token = get_token(chat_id)
-    json_data = get_unread_messagef_avito(token=token, user_id=avito_id)
-    ch_id = ''
-    # Создайте список, чтобы отслеживать идентификаторы отправленных сообщений
-    sent_message_ids = sent_messages.get(chat_id, [])
-            
-    
-    if "chats" in json_data:
-        for chat in json_data["chats"]:
-            message_id = chat["last_message"]["id"]
-            if message_id not in sent_message_ids:
-                sent_message_ids.append(message_id)
-                sent_messages[chat_id] = sent_message_ids
-                ch_id = chat['id']
-                title = chat["context"]["value"]["title"]
-                price_string = chat["context"]["value"]["price_string"]
-                url = chat["context"]["value"]["url"]
-                city = chat["context"]["value"]["location"]["title"]
-
-                users = chat["users"]
-                author_name = ""
-                client_name = ""
-                for user in users:
-                    if user["id"] == chat["last_message"]["author_id"]:
-                        author_name = user["name"]
-                    else:
-                        client_name = user["name"]
-
-                last_message_text = chat["last_message"]["content"]["text"]
-
-                # Создание сообщения
-                response_message = (
-                f"Товар: {title} {price_string}\n"
-                f"Автор товара: {client_name}\n"
-                f"Город: {city}\n"
-                f"Клиент: {author_name}\n\n"
-                f"Текст сообщения:\n{last_message_text}\n\n"
-                f"[Ссылка на товар]({url})"
-            )
+    try:
+        json_data = get_unread_messagef_avito(token=token, user_id=avito_id)
+        ch_id = ''
+        # Создайте список, чтобы отслеживать идентификаторы отправленных сообщений
+        sent_message_ids = sent_messages.get(chat_id, [])
                 
-                keyboard = types.InlineKeyboardMarkup()
-                keyboard.add(types.InlineKeyboardButton(text="📨Отправить сообщение", callback_data=f'send-message-group^{avito_id}^{ch_id}'),types.InlineKeyboardButton(text="💬Посмотреть чат", callback_data=f'view-chat-group^{avito_id}^{ch_id}'))
-                await bot.send_message(chat_id, text=response_message,parse_mode=types.ParseMode.MARKDOWN,reply_markup=keyboard)
+        
+        if "chats" in json_data:
+            for chat in json_data["chats"]:
+                message_id = chat["last_message"]["id"]
+                if message_id not in sent_message_ids:
+                    sent_message_ids.append(message_id)
+                    sent_messages[chat_id] = sent_message_ids
+                    ch_id = chat['id']
+                    title = chat["context"]["value"]["title"]
+                    price_string = chat["context"]["value"]["price_string"]
+                    url = chat["context"]["value"]["url"]
+                    city = chat["context"]["value"]["location"]["title"]
 
+                    users = chat["users"]
+                    author_name = ""
+                    client_name = ""
+                    for user in users:
+                        if user["id"] == chat["last_message"]["author_id"]:
+                            author_name = user["name"]
+                        else:
+                            client_name = user["name"]
+
+                    last_message_text = chat["last_message"]["content"]["text"]
+
+                    # Создание сообщения
+                    response_message = (
+                        f"Товар: [{markdown.escape_md(title)} {markdown.escape_md(price_string)}]({url})\n"
+                        f"Автор товара: {markdown.escape_md(client_name)}\n"
+                        f"Город: {markdown.escape_md(city)}\n"
+                        f"Клиент: {markdown.escape_md(author_name)}\n\n"
+                        f"Текст сообщения:\n{markdown.escape_md(last_message_text)}\n\n"
+                    )
+                    
+                    keyboard = types.InlineKeyboardMarkup()
+                    keyboard.add(types.InlineKeyboardButton(text="📨Отправить сообщение", callback_data=f'send-message-group^{avito_id}^{ch_id}'),types.InlineKeyboardButton(text="💬Посмотреть чат", callback_data=f'view-chat-group^{avito_id}^{ch_id}'))
+                    await bot.send_message(chat_id, text=response_message,parse_mode=types.ParseMode.MARKDOWN,reply_markup=keyboard)
+    except:
+        pass
 
 async def background_task(chat_id):
     while True:
@@ -1638,6 +1668,122 @@ async def background_task(chat_id):
         await asyncio.sleep(5)  # Подождите 5 секунд перед повторным выполнением
 
 
+async def send_unread_triggers():
+    while True:
+        print('check trig and start message')
+        chat_data = get_chats_with_triggers()
+        msgs = get_chats_with_msgs()
+        current_day = datetime.datetime.now().strftime("%a").upper()
+        if current_day =='MON':
+            current_day = 'ПН'
+        if chat_data:
+            for chat_id in chat_data:
+                token = get_token(chat_id[0])
+                avito_id = get_user_id(chat_id[0])
+
+                try:
+                    # Здесь ваш код для получения списка непрочитанных сообщений из Avito
+                    # Например, используйте функцию get_unread_messagef_avito
+                    unread_messages = get_unread_messagef_avito(token=token, user_id=avito_id)
+
+                    # Проверяем, что unread_messages не равен None
+                    if unread_messages is not None:
+                        for message in unread_messages.get("chats", []):
+                            chat_id = message['id']
+                            user_id = message['context']['value']['user_id']
+                            last_message_text = message['last_message']['content']['text']
+                            trigger = ''
+                            response_text = ''
+
+                            try:
+                                trigger, response_text = find_matching_trigger(last_message_text)
+                            except Exception as e:
+                                print(f"Error in find_matching_trigger: {e}")
+                                continue  # Продолжим обработку следующего сообщения
+
+                            if trigger:
+                                try:
+                                    send_message(chat_id=chat_id, user_id=avito_id, text=response_text, token=token)
+                                    mark_chat_as_read(avito_id, chat_id, token=token)
+                                except Exception as e:
+                                    print(f"Error sending message: {e}")
+
+                except requests.exceptions.ReadTimeout as e:
+                    # Обработка ошибки тайм-аута: подождите некоторое время и повторно отправьте запрос
+                    print(f'ReadTimeoutError: {e}, waiting and retrying...')
+                    await asyncio.sleep(10)  # Подождите 10 секунд перед повторной попыткой
+                    continue
+        
+        if msgs:
+            print('check msgs')
+            for data in msgs:
+                available_days = [day.strip() for day in data[4].split(',')]
+                print(available_days)
+                print(current_day)
+                if current_day in available_days:
+                    token = get_token(data[2])
+                    avito_id = get_user_id(data[2])
+
+                    try:
+                        # Здесь ваш код для получения списка непрочитанных сообщений из Avito
+                        # Например, используйте функцию get_unread_messagef_avito
+                        unread_messages = get_unread_messagef_avito(token=token, user_id=avito_id)
+
+                        # Проверяем, что unread_messages не равен None
+                        if unread_messages is not None:
+                            for message in unread_messages.get("chats", []):
+                                chat_id = message['id']
+                                response_text = ''
+
+                                try:
+                                    response_text = find_matching_answer()
+                                except Exception as e:
+                                    print(f"Error in answer: {e}")
+                                    continue  # Продолжим обработку следующего сообщения
+
+                                if response_text:
+                                    try:
+                                        
+                                        send_message(chat_id=chat_id, user_id=avito_id, text=response_text, token=token)
+                                        mark_chat_as_read(avito_id, chat_id, token=token)
+                                    except Exception as e:
+                                        print(f"Error sending message: {e}")
+
+                    except requests.exceptions.ReadTimeout as e:
+                        # Обработка ошибки тайм-аута: подождите некоторое время и повторно отправьте запрос
+                        await asyncio.sleep(10)  # Подождите 10 секунд перед повторной попыткой
+                        continue
+                
+
+        await asyncio.sleep(7)
+
+async def process_chats_with_data():
+    while True:
+    # Получите чаты из базы данных, где заполнены avito_id, client_id, client_secret и token
+        chats_with_data = get_chats_with_data()
+        print("Checking for unread messages...")  
+        for chat in chats_with_data:
+            chat_id = chat[0]
+            print(chat_id)
+            # Выполните обработку поиска новых сообщений и отправку сообщений для этого чата
+            try:
+                await get_unread_messages(chat_id)
+            except Exception as e:
+                print(f"Error in get_unread_messages: {e}")
+
+        await asyncio.sleep(5)
+
+
 if __name__ == '__main__':
     make_db()
+    
+    # Запустите задачу для отправки ответов на триггеры
+    loop = asyncio.get_event_loop()
+    # Запустите задачу для обработки чатов с данными
+    loop.create_task(process_chats_with_data())
+
+    loop.create_task(send_unread_triggers())
+    
+
+    
     executor.start_polling(dp, skip_updates=True)
