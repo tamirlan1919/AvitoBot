@@ -46,12 +46,25 @@ def make_db():
         week_days TEXT,
         avito_ids TEXT,
         response_text TEXT,
-        time TEXT,
         FOREIGN KEY (chat_id) REFERENCES chats (chat_id)
     );
     
     '''
-
+    create_msgs_table_query = '''
+    CREATE TABLE IF NOT EXISTS time_msgs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT,
+        chat_id INTEGER UNIQUE,
+        enabled INTEGER,
+        week_days TEXT,
+        avito_ids TEXT,
+        response_text TEXT,
+        start_time TEXT,
+        end_time TEXT,
+        FOREIGN KEY (chat_id) REFERENCES chats (chat_id)
+    );
+    
+    '''
     create_auto_responses_table_query = '''
 CREATE TABLE IF NOT EXISTS auto_responses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,13 +74,34 @@ CREATE TABLE IF NOT EXISTS auto_responses (
     FOREIGN KEY (chat_id) REFERENCES chats (chat_id)
 );
 '''
-
+    create_check_work_msgs = '''
+CREATE TABLE IF NOT EXISTS check_work_msgs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER,
+    start_time TEXT,
+    end_time TEXT,
+    avito_chat TEXT,
+    response_text TEXT,
+    FOREIGN KEY (chat_id) REFERENCES chats (chat_id)
+);
+'''
+    create_check_specific_msgs = '''
+CREATE TABLE IF NOT EXISTS specific_msgs_time (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER,
+    time TEXT,
+    avito_chat TEXT,
+    response_text TEXT,
+    FOREIGN KEY (chat_id) REFERENCES chats (chat_id)
+);
+'''
     # Выполнение SQL-запросов для создания таблиц
     cursor.execute(create_clients_table_query)
     cursor.execute(create_chats_table_query)
     cursor.execute(create_msgs_table_query)
     cursor.execute(create_auto_responses_table_query)
-
+    cursor.execute(create_check_work_msgs)
+    cursor.execute(create_check_specific_msgs)
     # Сохранение изменений в базе данных
     conn.commit()
 
@@ -230,6 +264,19 @@ def get_chats_with_triggers():
     conn.close()
     return chats_with_data
 
+def clear_check_work_msgs(avito_chat):
+    conn = sqlite3.connect('my_database.db')
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM check_work_msgs WHERE avito_chat = ?", (avito_chat,))
+    conn.commit()
+    conn.close()
+
+def clear_specific_msgs_time(avito_chat):
+    conn = sqlite3.connect('my_database.db')
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM specific_msgs_time WHERE avito_chat = ?", (avito_chat,))
+    conn.commit()
+    conn.close()
 
 
 def get_chats_with_msgs():
@@ -249,3 +296,37 @@ def get_chats_with_msgs():
 
     conn.close()
     return chats_with_data
+
+
+def get_chats_with_time_msgs():
+    conn = sqlite3.connect('my_database.db')  # Замените 'your_database.db' на путь к вашей базе данных
+    cursor = conn.cursor()
+
+    # Выполните SQL-запрос для извлечения чатов с заполненными данными
+    cursor.execute('''
+        SELECT *
+        FROM time_msgs
+        WHERE week_days IS NOT NULL
+          AND response_text IS NOT NULL
+          AND start_time IS NOT NULL
+          AND end_time IS NOT NULL
+          AND avito_ids IS NOT NULL
+
+    ''')
+
+    chats_with_data = cursor.fetchall()
+
+    conn.close()
+    return chats_with_data
+
+async def update_token_for_chat(chat_id,client_id,client_secret):
+    # Здесь выполняется обновление токена для данного чата
+    # Используйте API Avito для получения нового токена и обновите его в базе данных
+    new_token = set_personal_token(client_id=client_id,client_secret=client_secret)
+    print(new_token)
+    # Обновите токен в базе данных
+    conn = sqlite3.connect('my_database.db')
+    cursor = conn.cursor()
+    cursor.execute("UPDATE chats SET token = ? WHERE chat_id = ?", (new_token, chat_id))
+    conn.commit()
+    conn.close()

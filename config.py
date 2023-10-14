@@ -50,6 +50,7 @@ async def get_unread_messages_trig(chat_id):
     # Используйте API для получения сообщений
 
 
+
 import sqlite3
 
 def find_matching_trigger(user_text):
@@ -105,6 +106,31 @@ def find_matching_answer():
             return all_triggers
         else:
             return None
+    
+
+
+    except Exception as e:
+        print(f"Error in find_matching_trigger: {e}")
+    finally:
+        conn.close()
+
+    return None, None
+
+
+def find_matching_answer_work():
+    try:
+        conn = sqlite3.connect('my_database.db')  # Замените на имя вашей базы данных
+        cursor = conn.cursor()
+        lst = []
+        # Выполните SQL-запрос для получения всех триггеров из базы данных
+        cursor.execute("SELECT week_days, response_text FROM time_msgs")
+        all_triggers = cursor.fetchall()
+
+        if all_triggers:
+            return all_triggers
+        else:
+            return None
+    
 
 
     except Exception as e:
