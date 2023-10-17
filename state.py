@@ -12,6 +12,9 @@ class MyStates(StatesGroup):
 class TimeMessage(StatesGroup):
     waiting_for_text = State()  # Состояние для ожидания текста от пользователя 
 
+class WorkTimeMessage(StatesGroup):
+    waiting_for_text = State()
+
 
 class SpecificTimeMessage(StatesGroup):
     waiting_for_text = State()  # Состояние для ожидания текста от пользователя 
@@ -67,3 +70,49 @@ class AutoTriggers(StatesGroup):
 
 class YooMoneySum(StatesGroup):
     waiting_fot_sum = State()
+
+
+class YooMoneyProcent(StatesGroup):
+    waiting_fot_procent = State()
+
+
+class ChangeAutoResponseStateTitle(StatesGroup):
+    waiting_for_title = State()
+
+
+class ChangeAutoResponseStateAnswer(StatesGroup):
+    waiting_for_answer = State()
+
+class ChangeAutoResponseStateWeekDaysChange(StatesGroup):
+    waiting_for_weekdays_change = State()
+
+
+
+class TimeChangeAutoResponseStateTitle(StatesGroup):
+    waiting_for_title = State()
+
+
+class TimeChangeAutoResponseStateAnswer(StatesGroup):
+    waiting_for_answer = State()
+
+
+class ChangeTimeResponseStateStartTime(StatesGroup):
+    waiting_for_start_time = State()
+
+class ChangeTimeResponseStateEndTime(StatesGroup):
+    waiting_for_end_time = State()
+
+
+class ChangeAutoTriggers(StatesGroup):
+    WaitingForTrigger = State()  # Ожидание ввода триггера
+    WaitingForResponse = State()  # Ожидание ввода ответа
+
+
+
+
+class ChangeTimeResponseStateWeekDays(StatesGroup):
+    waiting_for_weekdays = State()
+
+
+class SetCode(StatesGroup):
+    waiting_for_code= State()

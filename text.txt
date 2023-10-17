@@ -19,3 +19,69 @@
         test_period_end TEXT
     );
     '''
+
+
+
+@dp.message_handler(lambda message: message.text in ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"], state=ChangeAutoResponseStateWeekDaysChange.waiting_for_weekdays_change)
+async def process_selected_days(message: types.Message, state: FSMContext):
+    selected_day = message.text
+    print('зашел')
+    async with state.proxy() as data:
+        chat_id = data.get('chat_id')
+        if chat_id is None:
+            return  # Обработка ошибки, если chat_id отсутствует
+        selected_days = data.get('changeselected_days', [])
+
+        if selected_day == "Готово":
+            # Здесь вы можете выполнить операцию обновления дней недели в базе данных
+            week_days_string = ",".join(selected_days)  # Строка, где дни недели разделены запятыми
+            conn = sqlite3.connect('my_database.db')
+            cursor = conn.cursor()
+            cursor.execute("UPDATE msgs SET week_days=? WHERE chat_id=?", (week_days_string, chat_id))
+            conn.commit()
+            conn.close()
+
+            await state.finish()
+            await bot.send_message(chat_id, "Дни недели успешно изменены.")
+
+        else:
+            if selected_day == "Выбрать все":
+                selected_days = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
+            elif selected_day in selected_days:
+                selected_days.remove(selected_day)
+            else:
+                selected_days.append(selected_day)
+
+            data['changeselected_days'] = selected_days
+            updated_markup = change_work_get_updated_week_days_keyboard(selected_days)
+            await bot.send_message(chat_id, "Выберите дни недели:", reply_markup=updated_markup)
+
+# Функция для обновления клавиатуры выбора дней недели
+def change_work_get_updated_week_days_keyboard(selected_days):
+    markup = types.InlineKeyboardMarkup(row_width=4)
+    days = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
+
+    # Добавляем кнопку "Выбрать все"
+    select_all_callback_data = "work_choose_day_all"
+    select_all_text = "Выбрать все ✅" if all(day in selected_days for day in days) else "Выбрать все ❌"
+    markup.add(types.InlineKeyboardButton(text=select_all_text, callback_data=select_all_callback_data))
+
+    # Разбиваем дни недели на две строки
+    for i in range(0, len(days), 4):
+        row = days[i:i + 4]
+        row_buttons = [
+            types.InlineKeyboardButton(
+                text=f'✅ {day}' if day in selected_days else f'❌ {day}',
+                callback_data=f'work_choose_day_{day}'
+            ) for day in row
+        ]
+        markup.row(*row_buttons)
+
+    # Добавляем кнопку "Готово"
+    markup.add(types.InlineKeyboardButton(text="Готово", callback_data="work_choose_day_done"))
+    return markup
+
+
+147695266
+xaH0A7QYOmyw8pQSgBMB
+PJdx4kcC-p8Z9e4RGDtTjfVfd15zOm5oQA2DyJUQ

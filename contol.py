@@ -33,6 +33,8 @@ def make_db():
         test_period TEXT,
         current_page INTEGER,
         current_page_message_id INTEGER,
+        who_linked TEXT,
+        link_rel TEXT,
         FOREIGN KEY (acc_id) REFERENCES clients (id)
 
     );
@@ -50,7 +52,7 @@ def make_db():
     );
     
     '''
-    create_msgs_table_query = '''
+    create_timemsgs_table_query = '''
     CREATE TABLE IF NOT EXISTS time_msgs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT,
@@ -70,6 +72,7 @@ CREATE TABLE IF NOT EXISTS auto_responses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     chat_id INTEGER,
     trigger TEXT,
+    enabled INTEGER,
     response_text TEXT,
     FOREIGN KEY (chat_id) REFERENCES chats (chat_id)
 );
@@ -95,8 +98,17 @@ CREATE TABLE IF NOT EXISTS specific_msgs_time (
     FOREIGN KEY (chat_id) REFERENCES chats (chat_id)
 );
 '''
-    # Выполнение SQL-запросов для создания таблиц
+    create_payment = '''
+CREATE TABLE IF NOT EXISTS payment (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    telegram_id INTEGER,
+    paysum REAL,
+    procent REAL
+);
+'''
+    cursor.execute(create_timemsgs_table_query)
     cursor.execute(create_clients_table_query)
+    cursor.execute(create_payment)
     cursor.execute(create_chats_table_query)
     cursor.execute(create_msgs_table_query)
     cursor.execute(create_auto_responses_table_query)
@@ -109,7 +121,23 @@ CREATE TABLE IF NOT EXISTS specific_msgs_time (
     conn.close()
 
 
+def insert_initial_data():
+    conn = sqlite3.connect('my_database.db')  # Замените 'my_database.db' на ваше имя базы данных
+    cursor = conn.cursor()
 
+    # Проверяем, пуста ли таблица "payment"
+    cursor.execute("SELECT COUNT(*) FROM payment")
+    count = cursor.fetchone()[0]
+
+    if count == 0:
+        # Если таблица пуста, вставляем начальные данные
+        cursor.execute("INSERT INTO payment (telegram_id, paysum, procent) VALUES (1, 1000.0, 20.0)")
+        conn.commit()
+        print("Начальные данные успешно вставлены.")
+    else:
+        print("Таблица уже содержит данные, начальные данные не вставляются.")
+
+    conn.close()
 
 
 
@@ -247,22 +275,25 @@ def get_chats_with_data():
 
 
 def get_chats_with_triggers():
-    conn = sqlite3.connect('my_database.db')  # Замените 'your_database.db' на путь к вашей базе данных
-    cursor = conn.cursor()
+    try:
+        conn = sqlite3.connect('my_database.db')  # Замените 'your_database.db' на путь к вашей базе данных
+        cursor = conn.cursor()
 
-    # Выполните SQL-запрос для извлечения чатов с заполненными данными
-    cursor.execute('''
-        SELECT chat_id
-        FROM auto_responses
-        WHERE trigger IS NOT NULL
-          AND response_text IS NOT NULL
+        # Выполните SQL-запрос для извлечения чатов с заполненными данными
+        cursor.execute('''
+            SELECT *
+            FROM auto_responses
+            WHERE trigger IS NOT NULL
+            AND response_text IS NOT NULL
 
-    ''')
+        ''')
 
-    chats_with_data = cursor.fetchall()
+        chats_with_data = cursor.fetchall()
 
-    conn.close()
-    return chats_with_data
+        conn.close()
+        return chats_with_data
+    except:
+        return None
 
 def clear_check_work_msgs(avito_chat):
     conn = sqlite3.connect('my_database.db')
@@ -298,6 +329,106 @@ def get_chats_with_msgs():
     return chats_with_data
 
 
+def get_time(user_id):
+    conn = sqlite3.connect('my_database.db')
+    cursor = conn.cursor()
+    
+    # Проверяем, есть ли значение в атрибуте "тестовый период" для данного пользователя
+    cursor.execute('SELECT test_period FROM chats WHERE chat_id = ?', (user_id[0],))
+    test_period_end = cursor.fetchone()
+    # Здесь предполагается, что вы извлекли дату и время окончания подписки из базы данных
+    subscription_end_time = ''
+    try:
+        subscription_end_time = datetime.datetime.strptime(test_period_end[0], '%Y-%m-%d %H:%M:%S.%f')
+    except Exception as e:
+        print('Error:', e)
+    
+    if subscription_end_time is None:
+        return None
+    
+    current_time = datetime.datetime.now()
+    if current_time <= subscription_end_time:
+        return True
+    else:
+        return False
+
+def get_time2(user_id):
+    conn = sqlite3.connect('my_database.db')
+    cursor = conn.cursor()
+    
+    # Проверяем, есть ли значение в атрибуте "тестовый период" для данного пользователя
+    cursor.execute('SELECT test_period FROM chats WHERE chat_id = ?', (user_id,))
+    test_period_end = cursor.fetchone()
+    # Здесь предполагается, что вы извлекли дату и время окончания подписки из базы данных
+    subscription_end_time = ''
+    try:
+        subscription_end_time = datetime.datetime.strptime(test_period_end[0], '%Y-%m-%d %H:%M:%S.%f')
+    except Exception as e:
+        print('Error:', e)
+    
+    if subscription_end_time is None:
+        return None
+    
+    current_time = datetime.datetime.now()
+    if current_time <= subscription_end_time:
+        return True
+    else:
+        return False
+    
+
+def get_enabled_triggers(chat_id):
+    conn = sqlite3.connect('my_database.db')  # Замените 'your_database.db' на путь к вашей базе данных
+    cursor = conn.cursor()
+
+    # Выполните SQL-запрос для извлечения чатов с заполненными данными
+    cursor.execute('''
+        SELECT enabled
+        FROM auto_responses
+        WHERE chat_id = ?
+
+    ''', (chat_id,))
+
+    data = cursor.fetchone()
+
+    conn.close()
+    return data
+
+
+def get_enabled_msgs(chat_id):
+    conn = sqlite3.connect('my_database.db')  # Замените 'your_database.db' на путь к вашей базе данных
+    cursor = conn.cursor()
+
+    # Выполните SQL-запрос для извлечения чатов с заполненными данными
+    cursor.execute('''
+        SELECT enabled
+        FROM msgs
+        WHERE chat_id = ?
+
+    ''', (chat_id,))
+
+    data = cursor.fetchone()
+
+    conn.close()
+    return data
+
+
+def get_enabled_tme_msgs(chat_id):
+    conn = sqlite3.connect('my_database.db')  # Замените 'your_database.db' на путь к вашей базе данных
+    cursor = conn.cursor()
+
+    # Выполните SQL-запрос для извлечения чатов с заполненными данными
+    cursor.execute('''
+        SELECT enabled
+        FROM time_msgs
+        WHERE chat_id = ?
+
+    ''', (chat_id,))
+
+    data = cursor.fetchone()
+
+    conn.close()
+    return data
+
 def get_chats_with_time_msgs():
     conn = sqlite3.connect('my_database.db')  # Замените 'your_database.db' на путь к вашей базе данных
     cursor = conn.cursor()
@@ -330,3 +461,6 @@ async def update_token_for_chat(chat_id,client_id,client_secret):
     cursor.execute("UPDATE chats SET token = ? WHERE chat_id = ?", (new_token, chat_id))
     conn.commit()
     conn.close()
+
+
+

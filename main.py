@@ -76,21 +76,26 @@ unique_user_names = set()
 image_folder = 'images/test_period'
 
 
-async def check_new_messages(message:types.Message):
+async def check_new_messages(message: types.Message):
     while True:
-        # Здесь вы можете добавить логику для прstart_textоверки наличия новых сообщений.
-        user_id = get_user_id(message.chat.id)
-        token = get_token(message.chat.id)
-        avito_data = await get_avito_unread_data(token=token, user_id=user_id)
-        
-        if avito_data and 'users' in avito_data:
-            new_message_count = len(avito_data['users'])
-            if new_message_count > 0:
-                # Если есть новые сообщения, выполните необходимые действия,
-                # например, уведомьте администратора или обработайте их.
-                await bot.send_message(message.chat.id, f'Новых сообщений: {new_message_count}')
-        
+        try:
+            # Здесь вы можете добавить логику для проверки наличия новых сообщений.
+            user_id = get_user_id(message.chat.id)
+            token = get_token(message.chat.id)
+            avito_data = await get_avito_unread_data(token=token, user_id=user_id)
+
+            if avito_data and 'users' in avito_data:
+                new_message_count = len(avito_data['users'])
+                if new_message_count > 0:
+                    # Если есть новые сообщения, выполните необходимые действия,
+                    # например, уведомьте администратора или обработайте их.
+                    await bot.send_message(message.chat.id, f'Новых сообщений: {new_message_count}')
+
+        except Exception as e:
+            # Здесь вы можете обработать исключение, например, залогировать его или отправить уведомление.
+            pass
         await asyncio.sleep(10)  # Подождите 10 секунд перед следующей проверкой (или укажите другой интервал)
+
 
 @dp.message_handler(Command("start") & ChatTypeFilter(types.ChatType.PRIVATE))
 async def start(message: types.Message):
@@ -116,11 +121,16 @@ async def start(message: types.Message):
         pass
 
     # Создаем клавиатуру
+    
     keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton(text='📹Видеоинструкция', callback_data='video'),
-                 types.InlineKeyboardButton(text='📓Cписок подключенных аккаунтов', callback_data='spisok'))
-    keyboard.add(types.InlineKeyboardButton(text='🤖Автоответы', callback_data='auto_answera'),
-                 types.InlineKeyboardButton(text='🆘Помощь', callback_data='sos'))
+    keyboard.add(
+        types.InlineKeyboardButton(text='🎥 Видео', callback_data='video'),
+        types.InlineKeyboardButton(text='📋 Список аккаунтов', callback_data='spisok')
+    )
+    keyboard.add(
+        types.InlineKeyboardButton(text='🤖 Автоответы', callback_data='auto_answera'),
+        types.InlineKeyboardButton(text='❓ Помощь', callback_data='sos')
+)
     try:
 
         # Проверяем, есть ли значение в атрибуте "тестовый период" для данного пользователя
@@ -155,10 +165,11 @@ async def start_group(message: types.Message):
                 # Если запись не существует, вставляем новую запись в таблицу chats
                 cursor.execute('SELECT test_period_end FROM clients WHERE id = ?', (user_id[0],))
                 test_per = cursor.fetchone()
-                cursor.execute('INSERT INTO chats (chat_id, acc_id, test_period) VALUES (?, ?, ?)', (chat_id, user_id[0], test_per[0]))
+                print(test_per)
+                cursor.execute('INSERT INTO chats (chat_id, acc_id, test_period,link_rel) VALUES (?, ?, ?, ?)', (chat_id, user_id[0], test_per[0],message.chat.id))
                 conn.commit()
             else:
-                await bot.send_mes
+               pass
     except:
         pass
 
@@ -181,6 +192,7 @@ async def start_group(message: types.Message):
     keyboard.add(types.InlineKeyboardButton(text='📋 Проверить статус подписки',callback_data='check_vip'))
     keyboard.add(types.InlineKeyboardButton(text='💳 Проверить платежи', callback_data='check_money'))
     keyboard.add(types.InlineKeyboardButton(text='➕ Подключить аккаунт',callback_data='check_connection'))
+    keyboard.add(types.InlineKeyboardButton(text='🔌 Реф ссылка',callback_data='check_ref'))
     await bot.send_message(message.chat.id,text='Выберите опцию',reply_markup=keyboard)
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data == 'check_vip')
@@ -192,11 +204,13 @@ async def check_vip(callback_query: types.CallbackQuery):
     cursor = conn.cursor()
     
     # Проверяем, есть ли значение в атрибуте "тестовый период" для данного пользователя
+
+    # Здесь предполагается, что вы извлекли дату и время окончания подписки из базы данных
     cursor.execute('SELECT test_period FROM chats WHERE chat_id = ?', (user_id,))
     test_period_end = cursor.fetchone()
-    # Здесь предполагается, что вы извлекли дату и время окончания подписки из базы данных
     subscription_end_time = ''
     try:
+
         subscription_end_time = datetime.datetime.strptime(test_period_end[0], '%Y-%m-%d %H:%M:%S.%f')
     except Exception as e:
         print('Error:', e)
@@ -234,6 +248,63 @@ async def check_vip(callback_query: types.CallbackQuery):
         reply_markup=keyboard,
         parse_mode='html'
     )
+
+
+@dp.callback_query_handler(lambda callback_query: callback_query.data == 'check_ref')
+async def check_ref(callback_query: types.CallbackQuery):
+    text = 'Выберите способ'
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(types.InlineKeyboardButton(text='🧩 Указать пригласительный код', callback_data='type_code'))
+    keyboard.add(types.InlineKeyboardButton(text='🎯 Получить код', callback_data='get_code'))
+    keyboard.add(types.InlineKeyboardButton(text='⬅️ Вернуться назад', callback_data='back_chat_menu'))
+    await bot.edit_message_text(
+        chat_id=callback_query.message.chat.id,
+        message_id=callback_query.message.message_id,
+        text=text,
+        reply_markup=keyboard
+    )
+
+@dp.callback_query_handler(lambda callback_query: callback_query.data == 'get_code')
+async def type_code(callback_query: types.CallbackQuery):
+    await bot.send_message(callback_query.message.chat.id,f'Ваш пригласительный код <code>{callback_query.message.chat.id}</code>',parse_mode='html')
+
+@dp.callback_query_handler(lambda callback_query: callback_query.data == 'type_code')
+async def type_code(callback_query: types.CallbackQuery,state: FSMContext):
+    await SetCode.waiting_for_code.set()
+    await bot.send_message(callback_query.message.chat.id,'Ввдеите пригласительный код')
+    async with state.proxy() as data:
+        data['chat_id'] = callback_query.message.chat.id
+
+@dp.message_handler(state=SetCode.waiting_for_code)
+async def enter_response(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        chat_id = data['chat_id']
+        response_text = message.text
+
+        # Проверяем, существует ли запись для данного chat_id и trigger
+        conn = sqlite3.connect('my_database.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM chats WHERE chat_id=?", (str(chat_id), ))
+        existing_record = cursor.fetchone()
+        print('existing ', existing_record)
+        if existing_record:
+            # Если запись существует, обновляем её
+            print('Обновлено')
+            cursor.execute("UPDATE chats SET who_linked=?  WHERE chat_id=?",
+                           (response_text, str(chat_id)))
+
+
+        conn.commit()
+        conn.close()
+
+        await message.reply(f"Пригласительный код записан")
+        await state.finish()
+
+
+
+
+
+
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data == 'check_connection')
 async def check_connection(callback_query: types.CallbackQuery):
@@ -322,6 +393,8 @@ async def back_chat_menu(callback_query: types.CallbackQuery):
     keyboard.add(types.InlineKeyboardButton(text='📋 Проверить статус подписки',callback_data='check_vip'))
     keyboard.add(types.InlineKeyboardButton(text='💳 Проверить платежи', callback_data='check_money'))
     keyboard.add(types.InlineKeyboardButton(text='➕ Подключить аккаунт',callback_data='check_connection'))
+    keyboard.add(types.InlineKeyboardButton(text='🔌 Реф ссылка',callback_data='check_ref'))
+
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
@@ -378,11 +451,24 @@ async def test_start(callback_query: types.CallbackQuery):
 @dp.callback_query_handler(lambda callback_query: callback_query.data == 'back_wrapper')
 async def back_wr(callback_query: types.CallbackQuery):
     keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton(text='📹 Видеоинструкция',callback_data='video'),types.InlineKeyboardButton(text='➕ Подключение Avito',callback_data='req_avito'))
-    keyboard.add(types.InlineKeyboardButton(text='🕥 Тестовый период',callback_data='test_period'),types.InlineKeyboardButton(text='📃 Автоотчеты',callback_data='auto_othcet'))
-    keyboard.add(types.InlineKeyboardButton(text='🤖 Бот в чате',callback_data='vidoe'),types.InlineKeyboardButton(text='📤 Ответ на сообщение',callback_data='req_avito'))
-    keyboard.add(types.InlineKeyboardButton(text='💾 Просмотр диалога',callback_data='vidoe'),types.InlineKeyboardButton(text='📑 Сценарии чатов',callback_data='req_avito'))
-    keyboard.add(types.InlineKeyboardButton(text='⬅️ Вернуться назад',callback_data='back_main'))
+    keyboard.add(
+        types.InlineKeyboardButton(text='📹 Видео', callback_data='video'),
+        types.InlineKeyboardButton(text='➕ Avito', callback_data='req_avito')
+    )
+    keyboard.add(
+        types.InlineKeyboardButton(text='🕥 Тест', callback_data='test_period'),
+        types.InlineKeyboardButton(text='📃 Отчеты', callback_data='auto_othcet')
+    )
+    keyboard.add(
+        types.InlineKeyboardButton(text='🤖 Бот', callback_data='vidoe'),
+        types.InlineKeyboardButton(text='📤 Ответ', callback_data='req_avito')
+    )
+    keyboard.add(
+        types.InlineKeyboardButton(text='💾 Диалог', callback_data='vidoe'),
+        types.InlineKeyboardButton(text='📑 Сценарии', callback_data='req_avito')
+    )
+    keyboard.add(types.InlineKeyboardButton(text='⬅️ Вернуться', callback_data='back_main'))
+
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
@@ -438,8 +524,12 @@ async def test_period(callback_query: types.CallbackQuery):
 async def pomosh(callback_query: types.CallbackQuery):
     text = '''Выберите опцию'''
     keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton(text='📃 Инструкция по использованию',callback_data='back_wrapper'),types.InlineKeyboardButton(text='📞 Связаться с поддержкой',callback_data='sos_with_me'))
-    keyboard.add(types.InlineKeyboardButton(text='⬅️ Вернуться в главное меню',callback_data='back_main'))
+    keyboard.add(
+        types.InlineKeyboardButton(text='📃 Инструкция', callback_data='back_wrapper'),
+        types.InlineKeyboardButton(text='📞 Поддержка', callback_data='sos_with_me')
+    )
+    keyboard.add(types.InlineKeyboardButton(text='⬅️ Главное меню', callback_data='back_main'))
+
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
@@ -466,8 +556,12 @@ TiqAvito принимает сообщения 24 /
 @dp.callback_query_handler(lambda callback_query: callback_query.data == 'auto_answera')
 async def auto_answera(callback_query: types.CallbackQuery):
     keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton(text='Показать автоответы',callback_data='show_answers_table'),types.InlineKeyboardButton(text='Добавить авоответ',callback_data='add_answer'))
-    keyboard.add(types.InlineKeyboardButton(text='⬅️ Вернуться в главное меню',callback_data='back_main'))
+    keyboard.add(
+        types.InlineKeyboardButton(text='🔍 Показать', callback_data='show_answers_table'),
+        types.InlineKeyboardButton(text='➕ Добавить', callback_data='add_answer')
+    )
+    keyboard.add(types.InlineKeyboardButton(text='⬅️ Главное меню', callback_data='back_main'))
+
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
@@ -479,8 +573,12 @@ async def auto_answera(callback_query: types.CallbackQuery):
 @dp.callback_query_handler(lambda callback_query: callback_query.data == 'back_menu_show')
 async def back_menu_show(callback_query: types.CallbackQuery):
     keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton(text='Показать автоответы',callback_data='show_answers_table'),types.InlineKeyboardButton(text='Добавить авоответ',callback_data='add_answer'))
-    keyboard.add(types.InlineKeyboardButton(text='⬅️ Вернуться в главное меню',callback_data='back_main'))
+    keyboard.add(
+        types.InlineKeyboardButton(text='🔍 Показать', callback_data='show_answers_table'),
+        types.InlineKeyboardButton(text='➕ Добавить', callback_data='add_answer')
+    )
+    keyboard.add(types.InlineKeyboardButton(text='⬅️ Главное меню', callback_data='back_main'))
+
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
@@ -504,40 +602,45 @@ async def show_answers_table(callback_query: types.CallbackQuery):
             print(user_id)
             cursor.execute('SELECT * FROM chats WHERE acc_id = ?', (user_id[0],))
             chats = cursor.fetchall()
+            if chats:
+                    # В переменной chats теперь хранятся все чаты, привязанные к заданному acc_id
+                for chat in chats:
+                    chat_id = chat[1]
+                    id_avito = chat[2]
+                    client_id = chat[3]
+                    client_secret = chat[4]
+                    token = chat[5]
+                    test_period = chat[6]
+                    token = get_token(chat_id)
+                    profile = await get_profile(token=token)
+                    profile_name = profile['name']
+                    profile_url = profile['profile_url']
+                    chat_info = await bot.get_chat(chat_id)
+                    # Формируем текст сообщения
+                    message_text = (
+                        f"<b>Профиль:</b> <a href='{profile_url}'>{profile_name}</a>\n"
+                        f"<b>Название группы:</b> <code>{chat_info.title}</code>\n"
+                        f"<b>Номер аккаунта:</b> <code>{user_id_telegram}</code>\n"
+                        f"<b>Client_id:</b> <code>{client_id}</code>\n"
+                        f"<b>Client_secret:</b> <code>{client_secret}</code>"
+                    )
 
-                # В переменной chats теперь хранятся все чаты, привязанные к заданному acc_id
-            for chat in chats:
-                chat_id = chat[1]
-                id_avito = chat[2]
-                client_id = chat[3]
-                client_secret = chat[4]
-                token = chat[5]
-                test_period = chat[6]
-                token = get_token(chat_id)
-                profile = await get_profile(token=token)
-                profile_name = profile['name']
-                profile_url = profile['profile_url']
-                chat_info = await bot.get_chat(chat_id)
-                # Формируем текст сообщения
-                message_text = (
-                    f"<b>Профиль:</b> <a href='{profile_url}'>{profile_name}</a>\n"
-                    f"<b>Название группы:</b> <code>{chat_info.title}</code>\n"
-                    f"<b>Номер аккаунта:</b> <code>{user_id_telegram}</code>\n"
-                    f"<b>Client_id:</b> <code>{client_id}</code>\n"
-                    f"<b>Client_secret:</b> <code>{client_secret}</code>"
-                )
+                    # Создаем кнопку "Выбрать"
+                    keyboard = types.InlineKeyboardMarkup()
+                    keyboard.add(types.InlineKeyboardButton(text="Выбрать", callback_data=f"certainUser^{chat_id}"))
 
-                # Создаем кнопку "Выбрать"
-                keyboard = types.InlineKeyboardMarkup()
-                keyboard.add(types.InlineKeyboardButton(text="Выбрать", callback_data=f"certainUser^{chat_id}"))
+                    # Отправляем сообщение с разметкой и кнопкой
+                    await bot.send_message(callback_query.message.chat.id, text=message_text, parse_mode="html", reply_markup=keyboard)
+            else:
+                await bot.answer_callback_query(callback_query.id, text='Не подключен авито аккаунт в чате', show_alert=True)
 
-                # Отправляем сообщение с разметкой и кнопкой
-                await bot.send_message(callback_query.message.chat.id, text=message_text, parse_mode="html", reply_markup=keyboard)
+
 
                 # Дальше можно делать что-то с данными о чатах
-
+        
     except:
-        await bot.send_message(callback_query.message.chat.id,'haha')
+        await bot.answer_callback_query(callback_query.id, text='Не подключен авито аккаунт в чате', show_alert=True)
+
 
 
 
@@ -581,12 +684,15 @@ async def certainUser(callback_query: types.CallbackQuery):
             message_text+= f'Ответ: {msgs_data[-2]}\n'
 
             keyboard = types.InlineKeyboardMarkup()
-            keyboard.add(types.InlineKeyboardButton(text='Выкл',callback_data='off'))
-            keyboard.add(types.InlineKeyboardButton(text='Удалить',callback_data='delete'))
-            keyboard.add(types.InlineKeyboardButton(text='Изменить название загаловка',callback_data='change_zag'))
-            keyboard.add(types.InlineKeyboardButton(text='Изменить дни недель',callback_data='change_date'))
-            keyboard.add(types.InlineKeyboardButton(text='Изменить вопросы',callback_data='change_quest'))
-            keyboard.add(types.InlineKeyboardButton(text='Изменить ответ',callback_data='change_ans'))
+            if msgs_data[3] == 1:
+                keyboard.add(types.InlineKeyboardButton(text='Выкл',callback_data=f'autoOff_{chat_id}'))
+            else:
+                keyboard.add(types.InlineKeyboardButton(text='Вкл',callback_data=f'autoOn_{chat_id}'))
+
+            keyboard.add(types.InlineKeyboardButton(text='Удалить',callback_data=f'autoDelete_{chat_id}'))
+            keyboard.add(types.InlineKeyboardButton(text='Изменить название загаловка',callback_data=f'autoChzag_{chat_id}'))
+            keyboard.add(types.InlineKeyboardButton(text='Изменить дни недель',callback_data=f'autoChangeDate_{chat_id}'))
+            keyboard.add(types.InlineKeyboardButton(text='Изменить ответ',callback_data=f'autoChangeAns_{chat_id}'))
             await bot.send_message(callback_query.message.chat.id,text=message_text,reply_markup=keyboard,parse_mode='html')
             
             print(msgs_data)
@@ -602,11 +708,16 @@ async def certainUser(callback_query: types.CallbackQuery):
             message_text2+= f'Конец: {time_msgs_data[-1]}\n'
 
             keyboard = types.InlineKeyboardMarkup()
-            keyboard.add(types.InlineKeyboardButton(text='Выкл',callback_data='off'))
-            keyboard.add(types.InlineKeyboardButton(text='Удалить',callback_data='delete'))
-            keyboard.add(types.InlineKeyboardButton(text='Изменить название загаловка',callback_data='change_zag'))
-            keyboard.add(types.InlineKeyboardButton(text='Изменить дни недель',callback_data='change_date'))
-            keyboard.add(types.InlineKeyboardButton(text='Изменить время',callback_data='change_time'))
+            if time_msgs_data[3] == 1:
+                keyboard.add(types.InlineKeyboardButton(text='Выкл',callback_data=f'Timeoff_{chat_id}'))
+            else:
+                keyboard.add(types.InlineKeyboardButton(text='Вкл',callback_data=f'TimeOn_{chat_id}'))
+
+            keyboard.add(types.InlineKeyboardButton(text='Удалить',callback_data=f'Timedelete_{chat_id}'))
+            keyboard.add(types.InlineKeyboardButton(text='Изменить название загаловка',callback_data=f'TimeChangeZag_{chat_id}'))
+            keyboard.add(types.InlineKeyboardButton(text='Изменить дни недель',callback_data=f'TimeChangeDate_{chat_id}'))
+            keyboard.add(types.InlineKeyboardButton(text='Изменить ответ',callback_data=f'TimeChangeAns_{chat_id}'))
+            keyboard.add(types.InlineKeyboardButton(text='Изменить время',callback_data=f'TimeChangeTime_{chat_id}'))
             
             await bot.send_message(callback_query.message.chat.id,text=message_text2,reply_markup=keyboard,parse_mode='html')
             
@@ -614,15 +725,17 @@ async def certainUser(callback_query: types.CallbackQuery):
         if auto_responses_data:
             print(msgs_data)
             message_text3+= f'Название: <b>Триггеры</b>\n'
-            message_text3+= f'Заголовок: {auto_responses_data[-2]}\n'
+            message_text3+= f'Заголовок: {auto_responses_data[-3]}\n'
             message_text3+= f'Ответ: {auto_responses_data[-1]}\n'
 
 
             keyboard = types.InlineKeyboardMarkup()
-            keyboard.add(types.InlineKeyboardButton(text='Выкл',callback_data='off'))
-            keyboard.add(types.InlineKeyboardButton(text='Удалить',callback_data='delete'))
-            keyboard.add(types.InlineKeyboardButton(text='Изменить триггеры',callback_data='cange_triggers'))
-            keyboard.add(types.InlineKeyboardButton(text='Изменить ответ',callback_data='change_ans'))
+            if auto_responses_data[3] == 1:
+                keyboard.add(types.InlineKeyboardButton(text='Выкл',callback_data=f'TrOff_{chat_id}'))
+            else:
+                keyboard.add(types.InlineKeyboardButton(text='Вкл',callback_data=f'TrOn_{chat_id}'))
+            keyboard.add(types.InlineKeyboardButton(text='Удалить',callback_data=f'TrDelete_'))
+            keyboard.add(types.InlineKeyboardButton(text='Изменить триггеры',callback_data=f'TrCangeTriggers_{chat_id}'))
 
             
             await bot.send_message(callback_query.message.chat.id,text=message_text3,reply_markup=keyboard,parse_mode='html')
@@ -631,13 +744,512 @@ async def certainUser(callback_query: types.CallbackQuery):
     keyboard = types.InlineKeyboardMarkup()
     keyboard.add(types.InlineKeyboardButton(text='⬅️ Вернуться в меню',callback_data='back_menu_show'))
 
+
+@dp.callback_query_handler(lambda callback_query: callback_query.data.startswith(('Troff', 'TrOn','TrDelete','TrCangeTriggers','TrChangeAns')))
+async def Trprocessing(callback_query: types.CallbackQuery,state: FSMContext):
+    action = callback_query.data.split('_')
+    await state.update_data(chat_id = action[1])
+    conn = sqlite3.connect('my_database.db')
+    cursor = conn.cursor()
+    if action[0] == 'Troff':
+        cursor.execute("UPDATE auto_responses SET enabled=?  WHERE chat_id=?",
+                           (0,  str(action[1])))
+        conn.commit()
+        await bot.send_message(callback_query.message.chat.id,'Триггеры успешно выключены')
+    elif action[0] == 'TrOn':
+        cursor.execute("UPDATE auto_responses SET enabled=?  WHERE chat_id=?",
+                           (1,  str(action[1])))
+        conn.commit()
+        await bot.send_message(callback_query.message.chat.id,'Триггеры успешно включены')
+    elif action[0] == 'TrDelete':
+        cursor.execute("DELETE FROM auto_responses WHERE chat_id=?",
+                           (str(action[1]),))
+        conn.commit()
+        await bot.send_message(callback_query.message.chat.id,'Треггир успешно удален')
+    elif action[0] == 'TrCangeTriggers':
+        # Если это выбрано, переключитесь на ввод триггеров
+        text = '''📝Введите триггеры, на которые нужно дать ответ. Триггером будет являться слово или словосочетание в сообщение клиента.
+
+        Каждый триггер должен быть на новой строке и отправлены одним сообщением.
+
+        Пример:
+        Какая цена
+        Цена какая
+        Сколько стоит
+        Узнать цену
+        Узнать стоимость'''
+        keyboard = types.InlineKeyboardMarkup()
+        keyboard.add(types.InlineKeyboardButton(text='Отменить', callback_data='stopp'))
+        await bot.send_message(callback_query.message.chat.id, text=text,reply_markup=keyboard)
+        await ChangeAutoTriggers.WaitingForTrigger.set()
+ 
+
+
+
+
+@dp.callback_query_handler(lambda callback_query: callback_query.data =='stopp', state=ChangeAutoTriggers)
+async def stopp(callback_query: types.CallbackQuery, state: FSMContext):
+    await state.finish()
+    await bot.send_message(callback_query.message.chat.id,'Действие отменено')
+
+
+@dp.message_handler(state=ChangeAutoTriggers.WaitingForTrigger)
+async def enter_trigger(message: types.Message, state: FSMContext):
+    # Ваш код для обработки триггера
+    async with state.proxy() as data:
+        chat_id = data['chat_id']
+        trigger = message.text
+        await state.update_data(trigger=trigger)
+        await message.reply(f"Теперь введите ответ на триггер '{trigger}':")
+        await AutoTriggers.WaitingForResponse.set()
+
+
+@dp.message_handler(state=ChangeAutoTriggers.WaitingForResponse)
+async def enter_response(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        chat_id = data['chat_id']
+        trigger = data['trigger']
+        response_text = message.text
+
+        # Проверяем, существует ли запись для данного chat_id и trigger
+        conn = sqlite3.connect('my_database.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM auto_responses WHERE chat_id=?", (str(chat_id), ))
+        existing_record = cursor.fetchone()
+        print('existing ', existing_record)
+        if existing_record:
+            # Если запись существует, обновляем её
+            print('Обновлено')
+            cursor.execute("UPDATE auto_responses SET trigger=?, response_text=?  WHERE chat_id=?",
+                           (trigger, response_text, str(chat_id)))
+        else:
+            # Если запись не существует, создаем новую
+            cursor.execute("INSERT INTO auto_responses (chat_id, trigger, enabled response_text) VALUES (?, ?, ?)",
+                           (str(chat_id), trigger, 1 ,response_text))
+
+        conn.commit()
+        conn.close()
+
+        await message.reply(f"Триггер '{trigger}' и его ответ обновлены.")
+        await state.finish()
+
+
+
+
+
+
+@dp.callback_query_handler(lambda callback_query: callback_query.data.startswith(('autoOff', 'autoOn', 'autoDelete','autoChzag','autoChangeDate','autoChangeAns')))
+async def auto_processing(callback_query: types.CallbackQuery,state: FSMContext):
+    action = callback_query.data.split('_')
+    await state.update_data(chat_id = action[1])
+    conn = sqlite3.connect('my_database.db')
+    cursor = conn.cursor()
+    if action[0] == 'autoOff':
+        cursor.execute("UPDATE msgs SET enabled=?  WHERE chat_id=?",
+                           (0,  str(action[1])))
+        conn.commit()
+        await bot.send_message(callback_query.message.chat.id,'Автоответ на приветсвтенное сообщение выключен')
+
+    elif action[0] == 'autoOn':
+        cursor.execute("UPDATE msgs SET enabled=?  WHERE chat_id=?",
+                           (1,  str(action[1])))
+        conn.commit()
+        await bot.send_message(callback_query.message.chat.id,'Автоответ на приветсвтенное сообщение включен')
+    elif action[0] == 'autoDelete':
+        cursor.execute("DELETE FROM msgs WHERE chat_id=?",
+                           (str(action[1]),))
+        conn.commit()
+        await bot.send_message(callback_query.message.chat.id,'Автоответ на приветсвтенное сообщение успешно удален')
+    elif action[0] == 'autoChzag':
+        await bot.send_message(callback_query.message.chat.id,'Введите новый загаловок')
+        await ChangeAutoResponseStateTitle.waiting_for_title.set()
+    elif action[0] == 'autoChangeDate':
+        await ChangeAutoResponseStateWeekDaysChange.waiting_for_weekdays_change.set()
+        markup = change_get_week_days_keyboard([])
+        await callback_query.message.answer("Выберите дни недели, для которых будет активен автоответ:", reply_markup=markup)
+
+    elif action[0] == 'autoChangeAns':
+        await bot.send_message(callback_query.message.chat.id,'Введите новый ответ')
+        await ChangeAutoResponseStateAnswer.waiting_for_answer.set()
+
+
+
+
+
+@dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('changeChoose_day_'), state=ChangeAutoResponseStateWeekDaysChange.waiting_for_weekdays_change)
+async def choose_day(callback_query: types.CallbackQuery, state: FSMContext):
+    selected_day = callback_query.data.split('_')[2]
+    print(callback_query.data.split('_'))
+    async with state.proxy() as data:
+        chat_id = data['chat_id']  # Получаем chat_id из состояния
+
+        if selected_day == "done":
+            # Выход из состояния выбора дней недели
+            await state.finish()
+            await bot.send_message(callback_query.message.chat.id, "Настройки автоответа сохранены.")
+            
+            # Выполните здесь операцию вставки в базу данных
+            conn = sqlite3.connect('my_database.db')
+            cursor = conn.cursor()
+            selected_days = data.get('selected_days', [])
+            week_days_string = ",".join(selected_days)  # Строка, где дни недели разделены запятыми
+            cursor.execute("UPDATE msgs SET week_days = ? WHERE chat_id = ?", (week_days_string, chat_id))
+
+            conn.commit()
+            conn.close()
+            
+        else:
+            # Обработка выбора дня недели
+            selected_days = data.get('selected_days', [])
+            if selected_day == "all":
+                selected_days = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
+            elif selected_day in selected_days:
+                selected_days.remove(selected_day)
+            else:
+                selected_days.append(selected_day)
+
+            data['selected_days'] = selected_days
+            updated_markup = change_get_updated_week_days_keyboard(selected_days)
+            await bot.edit_message_reply_markup(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id, reply_markup=updated_markup)
+# Функция для создания клавиатуры выбора дней недели
+def change_get_week_days_keyboard(selected_days):
+    markup = types.InlineKeyboardMarkup(row_width=4)  # Устанавливаем row_width на 4, чтобы было по два дня недели в строке
+    days = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
+
+    # Добавляем кнопку "Выбрать все"
+    select_all_callback_data = "changeChoose_day_all"
+    select_all_text = "Выбрать все ✅" if all(day in selected_days for day in days) else "Выбрать все ❌"
+    markup.add(types.InlineKeyboardButton(text=select_all_text, callback_data=select_all_callback_data))
+
+    # Разбиваем дни недели на две строки
+    for i in range(0, len(days), 4):
+        row = days[i:i + 4]
+        row_buttons = [
+            types.InlineKeyboardButton(
+                text=f'✅ {day}' if day in selected_days else f'❌ {day}',
+                callback_data=f'changeChoose_day_{day}'
+            ) for day in row
+        ]
+        markup.row(*row_buttons)
+
+    # Добавляем кнопку "Готово"
+    markup.add(types.InlineKeyboardButton(text="Готово", callback_data="changeChoose_day_done"))
+    return markup
+# Функция для обновления клавиатуры выбора дней недели
+def change_get_updated_week_days_keyboard(selected_days):
+    markup = types.InlineKeyboardMarkup(row_width=4)  # Устанавливаем row_width на 4, чтобы было по два дня недели в строке
+    days = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
+
+    # Добавляем кнопку "Выбрать все"
+    select_all_callback_data = "changeChoose_day_all"
+    select_all_text = "Выбрать все ✅" if all(day in selected_days for day in days) else "Выбрать все ❌"
+    markup.add(types.InlineKeyboardButton(text=select_all_text, callback_data=select_all_callback_data))
+
+    # Разбиваем дни недели на две строки
+    for i in range(0, len(days), 4):
+        row = days[i:i + 4]
+        row_buttons = [
+            types.InlineKeyboardButton(
+                text=f'✅ {day}' if day in selected_days else f'❌ {day}',
+                callback_data=f'changeChoose_day_{day}'
+            ) for day in row
+        ]
+        markup.row(*row_buttons)
+
+    # Добавляем кнопку "Готово"
+    markup.add(types.InlineKeyboardButton(text="Готово", callback_data="changeChoose_day_done"))
+    return markup
+# Обработчик для кнопки "Выбрать все"
+@dp.callback_query_handler(lambda callback_query: callback_query.data == "changeChoose_day_all", state=ChangeAutoResponseStateWeekDaysChange.waiting_for_weekdays_change)
+async def changeChoose_day_all(callback_query: types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        data['selected_days'] = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
+        updated_markup = change_get_updated_week_days_keyboard(data['selected_days'])
+        await bot.edit_message_reply_markup(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id, reply_markup=updated_markup)
+
+
+
+
+#------Change answer for msgs-----
+@dp.message_handler(state=ChangeAutoResponseStateAnswer.waiting_for_answer)
+async def enter_answer(message: types.Message, state: FSMContext):
+    conn = sqlite3.connect('my_database.db')
+    cursor = conn.cursor()
+    async with state.proxy() as data:
+        chat_id = data['chat_id']  # Получаем chat_id из состояния
+        answer = message.text        
+        cursor.execute("UPDATE msgs SET response_text=?  WHERE chat_id=?",
+                            (answer,  chat_id))
+        conn.commit()
+        await bot.send_message(chat_id=message.chat.id,text='Ответ успешно изменен')
+    await state.finish()  # Завершаем состояние после обработки сообщения
+
+#change title for msgs
+@dp.message_handler(state=ChangeAutoResponseStateTitle.waiting_for_title)
+async def enter_title(message: types.Message, state: FSMContext):
+    conn = sqlite3.connect('my_database.db')
+    cursor = conn.cursor()
+    async with state.proxy() as data:
+        chat_id = data['chat_id']  # Получаем chat_id из состояния
+        title = message.text        
+        cursor.execute("UPDATE msgs SET title=?  WHERE chat_id=?",
+                            (title,  chat_id))
+        await bot.send_message(chat_id=message.chat.id,text='Загаловок успешно изменен')
+
+        conn.commit()
+    await state.finish()  # Завершаем состояние после обработки сообщения
+
+@dp.callback_query_handler(lambda callback_query: callback_query.data.startswith(('Timeoff', 'TimeOn' ,'Timedelete','TimeChangeZag','TimeChangeDate','TimeChangeTime','TimeChangeAns')))
+async def auto_processing(callback_query: types.CallbackQuery,state: FSMContext):
+    action = callback_query.data.split('_')
+    await state.update_data(chat_id = action[1])
+    conn = sqlite3.connect('my_database.db')
+    cursor = conn.cursor()
+    if action[0] == 'Timeoff':
+        cursor.execute("UPDATE time_msgs SET enabled=?  WHERE chat_id=?",
+                           (0,  str(action[1])))
+        conn.commit()
+        await bot.send_message(callback_query.message.chat.id,'Автоответ на запланированное сообщение успешно выключен')
+    elif action[0] == 'TimeOn':
+        cursor.execute("UPDATE time_msgs SET enabled=?  WHERE chat_id=?",
+                           (1,  str(action[1])))
+        conn.commit()
+        await bot.send_message(callback_query.message.chat.id,'Автоответ на запланированное сообщение успешно включен')
+    
+    elif action[0] == 'autoDelete':
+        cursor.execute("DELETE FROM time_msgs WHERE chat_id=?",
+                           (str(action[1]),))
+        conn.commit()
+        await bot.send_message(callback_query.message.chat.id,'Автоответ на запланированное сообщение  успешно удален')
+    elif action[0] == 'TimeChangeZag':
+        await bot.send_message(callback_query.message.chat.id,'Введите новый загаловок')
+        await TimeChangeAutoResponseStateTitle.waiting_for_title.set()
+    elif action[0] == 'TimeChangeDate':
+        await ChangeTimeResponseStateWeekDays.waiting_for_weekdays.set()
+        markup = time_change_get_week_days_keyboard([])
+        await callback_query.message.answer("Выберите дни недели, для которых будет активен автоответ:", reply_markup=markup)
+
+    elif action[0] == 'TimeChangeAns':
+        await bot.send_message(callback_query.message.chat.id,'Введите новый ответ')
+        await TimeChangeAutoResponseStateAnswer.waiting_for_answer.set()
+    elif action[0] == 'TimeChangeTime':
+        await bot.send_message(callback_query.message.chat.id,'Введите новое время по примеру (00:00)')
+        await ChangeTimeResponseStateStartTime.waiting_for_start_time.set()
+
+
+
+
+#----------Change Date Time---------
+
+
+@dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('TimechangeChoose_day_'), state=ChangeTimeResponseStateWeekDays.waiting_for_weekdays)
+async def time_choose_day(callback_query: types.CallbackQuery, state: FSMContext):
+    selected_day = callback_query.data.split('_')[2]
+    print(callback_query.data.split('_'))
+    async with state.proxy() as data:
+        chat_id = data['chat_id']  # Получаем chat_id из состояния
+
+        if selected_day == "done":
+            # Выход из состояния выбора дней недели
+            await state.finish()
+            await bot.send_message(callback_query.message.chat.id, "Настройки автоответа сохранены.")
+            
+            # Выполните здесь операцию вставки в базу данных
+            conn = sqlite3.connect('my_database.db')
+            cursor = conn.cursor()
+            selected_days = data.get('selected_days', [])
+            week_days_string = ",".join(selected_days)  # Строка, где дни недели разделены запятыми
+            cursor.execute("UPDATE time_msgs SET week_days = ? WHERE chat_id = ?", (week_days_string, chat_id))
+
+            conn.commit()
+            conn.close()
+            
+        else:
+            # Обработка выбора дня недели
+            selected_days = data.get('selected_days', [])
+            if selected_day == "all":
+                selected_days = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
+            elif selected_day in selected_days:
+                selected_days.remove(selected_day)
+            else:
+                selected_days.append(selected_day)
+
+            data['selected_days'] = selected_days
+            updated_markup = time_change_get_updated_week_days_keyboard(selected_days)
+            await bot.edit_message_reply_markup(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id, reply_markup=updated_markup)
+# Функция для создания клавиатуры выбора дней недели
+def time_change_get_week_days_keyboard(selected_days):
+    markup = types.InlineKeyboardMarkup(row_width=4)  # Устанавливаем row_width на 4, чтобы было по два дня недели в строке
+    days = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
+
+    # Добавляем кнопку "Выбрать все"
+    select_all_callback_data = "TimechangeChoose_day_all"
+    select_all_text = "Выбрать все ✅" if all(day in selected_days for day in days) else "Выбрать все ❌"
+    markup.add(types.InlineKeyboardButton(text=select_all_text, callback_data=select_all_callback_data))
+
+    # Разбиваем дни недели на две строки
+    for i in range(0, len(days), 4):
+        row = days[i:i + 4]
+        row_buttons = [
+            types.InlineKeyboardButton(
+                text=f'✅ {day}' if day in selected_days else f'❌ {day}',
+                callback_data=f'TimechangeChoose_day_{day}'
+            ) for day in row
+        ]
+        markup.row(*row_buttons)
+
+    # Добавляем кнопку "Готово"
+    markup.add(types.InlineKeyboardButton(text="Готово", callback_data="TimechangeChoose_day_done"))
+    return markup
+# Функция для обновления клавиатуры выбора дней недели
+def time_change_get_updated_week_days_keyboard(selected_days):
+    markup = types.InlineKeyboardMarkup(row_width=4)  # Устанавливаем row_width на 4, чтобы было по два дня недели в строке
+    days = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
+
+    # Добавляем кнопку "Выбрать все"
+    select_all_callback_data = "TimechangeChoose_day_all"
+    select_all_text = "Выбрать все ✅" if all(day in selected_days for day in days) else "Выбрать все ❌"
+    markup.add(types.InlineKeyboardButton(text=select_all_text, callback_data=select_all_callback_data))
+
+    # Разбиваем дни недели на две строки
+    for i in range(0, len(days), 4):
+        row = days[i:i + 4]
+        row_buttons = [
+            types.InlineKeyboardButton(
+                text=f'✅ {day}' if day in selected_days else f'❌ {day}',
+                callback_data=f'TimechangeChoose_day_{day}'
+            ) for day in row
+        ]
+        markup.row(*row_buttons)
+
+    # Добавляем кнопку "Готово"
+    markup.add(types.InlineKeyboardButton(text="Готово", callback_data="TimechangeChoose_day_done"))
+    return markup
+# Обработчик для кнопки "Выбрать все"
+@dp.callback_query_handler(lambda callback_query: callback_query.data == "TimechangeChoose_day_all", state=ChangeTimeResponseStateWeekDays.waiting_for_weekdays)
+async def changeChoose_day_all(callback_query: types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        data['selected_days'] = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
+        updated_markup = time_change_get_updated_week_days_keyboard(data['selected_days'])
+        await bot.edit_message_reply_markup(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id, reply_markup=updated_markup)
+
+
+
+
+
+
+
+@dp.message_handler(state=TimeChangeAutoResponseStateAnswer.waiting_for_answer)
+async def enter_answer(message: types.Message, state: FSMContext):
+    conn = sqlite3.connect('my_database.db')
+    cursor = conn.cursor()
+    async with state.proxy() as data:
+        chat_id = data['chat_id']  # Получаем chat_id из состояния
+        answer = message.text        
+        cursor.execute("UPDATE time_msgs SET response_text=?  WHERE chat_id=?",
+                            (answer,  chat_id))
+        conn.commit()
+        await bot.send_message(chat_id=message.chat.id,text='Ответ успешно изменен')
+    await state.finish()  # Завершаем состояние после обработки сообщения
+
+#change title for msgs
+@dp.message_handler(state=TimeChangeAutoResponseStateTitle.waiting_for_title)
+async def enter_title(message: types.Message, state: FSMContext):
+    conn = sqlite3.connect('my_database.db')
+    cursor = conn.cursor()
+    async with state.proxy() as data:
+        chat_id = data['chat_id']  # Получаем chat_id из состояния
+        title = message.text        
+        cursor.execute("UPDATE time_msgs SET title=?  WHERE chat_id=?",
+                            (title,  chat_id))
+        await bot.send_message(chat_id=message.chat.id,text='Загаловок успешно изменен')
+
+        conn.commit()
+    await state.finish()  # Завершаем состояние после обработки сообщения
+
+
+
+
+
+
+
+@dp.message_handler(lambda message: not message.text.startswith('/'), state=ChangeTimeResponseStateStartTime.waiting_for_start_time)
+async def time_change_process_start_time_input(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        try:
+            time_str = message.text.strip()
+            # Парсим введенное время
+            hours, minutes = map(int, time_str.split(':'))
+            if not (0 <= hours < 24) or not (0 <= minutes < 60):
+                raise ValueError
+            # Преобразуем введенное время в строку формата HH:MM
+            time_formatted = f"{hours:02d}:{minutes:02d}"
+            data['start_time'] = time_formatted
+        except ValueError:
+            await message.answer("Пожалуйста, введите корректное время начала интервала в формате HH:MM.")
+            return
+
+    await ChangeTimeResponseStateEndTime.waiting_for_end_time.set()
+    await message.answer("Теперь введите время окончания интервала в формате HH:MM.")
+
+@dp.message_handler(lambda message: not message.text.startswith('/'), state=ChangeTimeResponseStateEndTime.waiting_for_end_time)
+async def time_change_process_end_time_input(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        try:
+            time_str = message.text.strip()
+            # Парсим введенное время
+            hours, minutes = map(int, time_str.split(':'))
+            if not (0 <= hours < 24) or not (0 <= minutes < 60):
+                raise ValueError
+            # Преобразуем введенное время в строку формата HH:MM
+            time_formatted = f"{hours:02d}:{minutes:02d}"
+            data['end_time'] = time_formatted
+        except ValueError:
+            await message.answer("Пожалуйста, введите корректное время окончания интервала в формате HH:MM.")
+            return
+
+    await message.answer("Ввод времени завершен.")
+    await time_change_process_time_interval_data(message, state)
+
+async def time_change_process_time_interval_data(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        conn = sqlite3.connect('my_database.db')
+        cursor = conn.cursor()
+        chat_id = data['chat_id']
+        start_time = data['start_time']
+        end_time = data['end_time']
+
+        cursor.execute("UPDATE time_msgs SET start_time=?, end_time=? WHERE chat_id=?", (start_time, end_time, chat_id))
+
+        conn.commit()
+        conn.close()
+
+        await message.answer(f"Интервал времени успешно изменен: с {start_time} до {end_time}")
+
+        # Возвращаемся в начальное состояние
+        await state.finish()
+
+
+
+
+
+#------------Меняем дату-------------
+
+
+
+
+
 @dp.callback_query_handler(lambda callback_query: callback_query.data == 'add_answer')
 async def add_answer(callback_query: types.CallbackQuery):
     text = '''Выберите, в каком случае будем отправлять сообщение клиенту ⁉️ Будьте внимательны, автоответы будут применены для всех аккаунтов привязанных к боту. Если у вас несколько аккаунтов и вы вы хотите, чтобы в каждом аккаунте была своя логика. Создайте для каждого аккаунта отдельный чат в Telegram и добавьте туда бота для работы с сообщениями.'''
     keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton(text='На первое сообщение',callback_data='first_message'),types.InlineKeyboardButton(text='В определенный промежуток времени',callback_data='time_message'))
-    keyboard.add(types.InlineKeyboardButton(text='Триггеры',callback_data='triggers'))
-    keyboard.add(types.InlineKeyboardButton(text='⬅️ Вернуться в главное меню',callback_data='back_menu_show'))
+    keyboard.add(
+        types.InlineKeyboardButton(text='1-е сообщение', callback_data='first_message'),
+        types.InlineKeyboardButton(text='🔔 Триггеры', callback_data='triggers')
+    )
+    keyboard.add(types.InlineKeyboardButton(text='⏰ Промежуток времени', callback_data='time_message')
+)
+    keyboard.add(types.InlineKeyboardButton(text='⬅️ Главное меню', callback_data='back_menu_show'))
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
@@ -944,7 +1556,9 @@ async def triggers(callback_query: types.CallbackQuery):
                 # Дальше можно делать что-то с данными о чатах
 
     except:
-        await bot.send_message(callback_query.message.chat.id,'haha')
+        await bot.answer_callback_query(callback_query.id, text='Не подключен авито аккаунт в чате', show_alert=True)
+
+
 
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith(('trig^')))
@@ -1008,8 +1622,8 @@ async def enter_response(message: types.Message, state: FSMContext):
                            (trigger, response_text, str(chat_id)))
         else:
             # Если запись не существует, создаем новую
-            cursor.execute("INSERT INTO auto_responses (chat_id, trigger, response_text) VALUES (?, ?, ?)",
-                           (str(chat_id), trigger, response_text))
+            cursor.execute("INSERT INTO auto_responses (chat_id, trigger, enabled response_text) VALUES (?, ?, ?)",
+                           (str(chat_id), trigger, 1 ,response_text))
 
         conn.commit()
         conn.close()
@@ -1072,13 +1686,19 @@ async def first_message(callback_query: types.CallbackQuery):
                 # Дальше можно делать что-то с данными о чатах
 
     except:
-        await bot.send_message(callback_query.message.chat.id,'haha')
+        await bot.send_message(callback_query.message.chat.id,'Не заполнены данные для авито')
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data == 'back_main')
 async def back_main(callback_query: types.CallbackQuery):
     keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton(text='📹Видеоинструкция',callback_data='video'),types.InlineKeyboardButton(text='📓Cписок подключенных аккаунтов',callback_data='spisok'))
-    keyboard.add(types.InlineKeyboardButton(text='🤖Автоответы',callback_data='auto_answera'),types.InlineKeyboardButton(text='🆘Помощь',callback_data='sos'))
+    keyboard.add(
+        types.InlineKeyboardButton(text='🎥 Видео', callback_data='video'),
+        types.InlineKeyboardButton(text='📋 Список аккаунтов', callback_data='spisok')
+    )
+    keyboard.add(
+        types.InlineKeyboardButton(text='🤖 Автоответы', callback_data='auto_answera'),
+        types.InlineKeyboardButton(text='❓ Помощь', callback_data='sos')
+)
     await bot.edit_message_text(
         chat_id=callback_query.message.chat.id,
         message_id=callback_query.message.message_id,
@@ -1103,41 +1723,45 @@ async def spisok(callback_query: types.CallbackQuery):
             print(user_id)
             cursor.execute('SELECT * FROM chats WHERE acc_id = ?', (user_id[0],))
             chats = cursor.fetchall()
+            if chats:
 
-                # В переменной chats теперь хранятся все чаты, привязанные к заданному acc_id
-            for chat in chats:
-                chat_id = chat[1]
-                id_avito = chat[2]
-                client_id = chat[3]
-                client_secret = chat[4]
-                token = chat[5]
-                test_period = chat[6]
-                token = get_token(chat_id)
-                profile = await get_profile(token=token)
-                profile_name = profile['name']
-                profile_url = profile['profile_url']
-                chat_info = await bot.get_chat(chat_id)
-                # Формируем текст сообщения
-                message_text = (
-                    f"<b>Профиль:</b> <a href='{profile_url}'>{profile_name}</a>\n"
-                    f"<b>Название группы:</b> <code>{chat_info.title}</code>\n"
-                    f"<b>Номер аккаунта:</b> <code>{user_id_telegram}</code>\n"
-                    f"<b>Client_id:</b> <code>{client_id}</code>\n"
-                    f"<b>Client_secret:</b> <code>{client_secret}</code>"
-                )
+                    # В переменной chats теперь хранятся все чаты, привязанные к заданному acc_id
+                for chat in chats:
+                    chat_id = chat[1]
+                    id_avito = chat[2]
+                    client_id = chat[3]
+                    client_secret = chat[4]
+                    token = chat[5]
+                    test_period = chat[6]
+                    token = get_token(chat_id)
+                    profile = await get_profile(token=token)
+                    profile_name = profile['name']
+                    profile_url = profile['profile_url']
+                    chat_info = await bot.get_chat(chat_id)
+                    # Формируем текст сообщения
+                    message_text = (
+                        f"<b>Профиль:</b> <a href='{profile_url}'>{profile_name}</a>\n"
+                        f"<b>Название группы:</b> <code>{chat_info.title}</code>\n"
+                        f"<b>Номер аккаунта:</b> <code>{user_id_telegram}</code>\n"
+                        f"<b>Client_id:</b> <code>{client_id}</code>\n"
+                        f"<b>Client_secret:</b> <code>{client_secret}</code>"
+                    )
 
-                # Создаем кнопку "Выбрать"
-                keyboard = types.InlineKeyboardMarkup()
+                    # Создаем кнопку "Выбрать"
+                    keyboard = types.InlineKeyboardMarkup()
 
-                # Отправляем сообщение с разметкой и кнопкой
-                await bot.send_message(callback_query.message.chat.id, text=message_text, parse_mode="html", reply_markup=keyboard)
-        keyboard = types.InlineKeyboardMarkup()
-        keyboard.add(types.InlineKeyboardButton(text='⬅️ Вернуться в главное меню',callback_data='back_main'))
+                    # Отправляем сообщение с разметкой и кнопкой
+                    await bot.send_message(callback_query.message.chat.id, text=message_text, parse_mode="html", reply_markup=keyboard)
+            keyboard = types.InlineKeyboardMarkup()
+            keyboard.add(types.InlineKeyboardButton(text='⬅️ Вернуться в главное меню',callback_data='back_main'))
+
 
                 # Дальше можно делать что-то с данными о чатах
         await bot.send_message(callback_query.message.chat.id,'Назад',reply_markup=keyboard)
     except:
-        await bot.send_message(callback_query.message.chat.id,'haha')
+        await bot.answer_callback_query(callback_query.id, text='Не подключен авито аккаунт в чате', show_alert=True)
+
+
 
 
 
@@ -1707,6 +2331,23 @@ async def action_callback(callback_query: types.CallbackQuery,state: FSMContext)
 
 
 
+@dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('send-working-hours^'))
+async def send_working_hours(callback_query: types.CallbackQuery, state: FSMContext):
+    action_data = callback_query.data
+    action_data = callback_query.data.split('^')
+    user_id, chat_id = action_data[0], action_data[1] 
+    await bot.send_message(callback_query.message.chat.id, "Введите текст сообщения:")
+
+    # Устанавливаем состояние, чтобы ожидать ответа пользователя
+    await WorkTimeMessage.waiting_for_text.set()
+
+    # Сохраняем chat_id и user_id в состоянии, чтобы использовать их в следующем шаге
+    async with state.proxy() as data:
+        data['chat_id'] = chat_id
+        data['user_id'] = user_id
+        data['telegram_chat_id'] = callback_query.message.chat.id  # Добавляем chat_id Telegram чата
+
+
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('send-custom-time^'))
 async def send_custom_time(callback_query: types.CallbackQuery, state: FSMContext):
     action_data = callback_query.data
@@ -1722,6 +2363,33 @@ async def send_custom_time(callback_query: types.CallbackQuery, state: FSMContex
         data['chat_id'] = chat_id
         data['user_id'] = user_id
         data['telegram_chat_id'] = callback_query.message.chat.id  # Добавляем chat_id Telegram чата
+
+
+@dp.message_handler(state=WorkTimeMessage.waiting_for_text)
+async def process_time(message: Message, state: FSMContext):
+    try:
+        # Получаем текст сообщения от пользователя
+        response_text = message.text
+
+        # Сохраняем текст сообщения в состоянии
+        async with state.proxy() as data:
+            chat_id = data['chat_id']
+            
+            conn = sqlite3.connect('my_database.db')
+            cursor = conn.cursor()
+            cursor.execute('SELECT start_time, end_time FROM time_msgs WHERE chat_id = ?', (message.chat.id,))
+            lst = cursor.fetchone()
+            cursor.execute('INSERT INTO check_work_msgs (chat_id, start_time, end_time, avito_chat, response_text) VALUES (?, ?, ?, ?, ?)',
+                            (message.chat.id, lst[0], lst[1], chat_id, response_text))
+            conn.commit()
+            conn.close()
+            await bot.send_message(message.chat.id,'Сообщение добавлено в базу запланированнах для оптравки в рабочее время')
+        # Переход к следующему состоянию ожидания времени
+    except Exception as e:
+        print(e)
+        await bot.send_message(message.chat.id, "Произошла ошибка при обработке текста сообщения.")
+        await state.finish()
+
 
 @dp.message_handler(state=SpecificTimeMessage.waiting_for_text)
 async def process_time(message: Message, state: FSMContext):
@@ -1914,10 +2582,15 @@ async def check_pattern(message: types.Message):
                     await message.reply(f"Ваш тестовый период истек. Для продолжения работы, пожалуйста оплатите подписку",reply_markup=keyboard)
                 else:
                     token = set_personal_token(client_id=lst[2],client_secret=lst[3])
+                    if token:
                     # Обновляем существующую запись в таблице chats
-                    cursor.execute('UPDATE chats SET id_avito = ?, client_id = ?, client_secret = ?, token = ?  WHERE chat_id = ?',
-                                (lst[1], lst[2], lst[3], token, message.chat.id))
-                    conn.commit()
+                        cursor.execute('UPDATE chats SET id_avito = ?, client_id = ?, client_secret = ?, token = ?  WHERE chat_id = ?',
+                                    (lst[1], lst[2], lst[3], token, message.chat.id))
+                        conn.commit()
+                        await bot.send_message(message.chat.id,'Данные успешно обновлены')
+                    else:
+                        await bot.send_message(message.chat.id,'Вы неправильно вставили данные, пожалуйста следуйте инструкции')
+
             else:
                 if test_period <= datetime.datetime.now():
                     keyboard = types.InlineKeyboardMarkup()
@@ -1926,11 +2599,16 @@ async def check_pattern(message: types.Message):
                     await message.reply(f"Ваш тестовый период истек. Для продолжения работы, пожалуйста оплатите подписку",reply_markup=keyboard)
                 else:
                     token = set_personal_token(client_id=lst[2],client_secret=lst[3])
-                    # Если запись не существует, создаем новую
-                    cursor.execute('INSERT INTO chats (chat_id, id_avito, client_id, client_secret,token) VALUES (?, ?, ?, ?, ?)',
-                                (message.chat.id, lst[1], lst[2], lst[3], token))
-                    
-                    conn.commit()
+                    if token:
+                        # Если запись не существует, создаем новую
+                        cursor.execute('INSERT INTO chats (chat_id, id_avito, client_id, client_secret,token) VALUES (?, ?, ?, ?, ?)',
+                                    (message.chat.id, lst[1], lst[2], lst[3], token))
+                        
+                        conn.commit()
+                        await bot.send_message(message.chat.id,'Avito успешно подключен, теперь сообщения будут приходить в этот чат.')
+                    else:
+                        await bot.send_message(message.chat.id,'Вы неправильно вставили данные, пожалуйста следуйте инструкции')
+
                    
             
             # Сохраняем изменения в базе данных
@@ -1952,13 +2630,14 @@ async def get_account_info(message: types.Message):
     try:
         keyboard = types.InlineKeyboardMarkup(row_width=2)
         keyboard.add(types.InlineKeyboardButton(text="🔎 Посмотреть баланс", callback_data=f'view_balance'),types.InlineKeyboardButton(text="✍️ Изменить сумму ", callback_data=f'chang_balance'))
+        keyboard.add(types.InlineKeyboardButton(text='⁒ Изменить процент подписки',callback_data='change_procent'))
         keyboard.add(types.InlineKeyboardButton(text="🕸 Посмотореть ссылку для оплаты ", url='https://yoomoney.ru/transfer/quickpay?requestId=353339313234373332315f64636536343062613739396163313832353138336465376132343935653739633136313830646464'))
         keyboard.add(types.InlineKeyboardButton(text="🔚Назад", callback_data=f'back_admin'))
         await bot.send_message(message.chat.id, 'Выберите опцию', reply_markup=keyboard)
     except Exception as e:
         print('Error:', str(e))
 
-@dp.callback_query_handler(lambda callback_query: callback_query.data.startswith(('view_balance','chang_balance','view_site')))
+@dp.callback_query_handler(lambda callback_query: callback_query.data.startswith(('view_balance','chang_balance','view_site','change_procent')))
 async def action_callback(callback_query: types.CallbackQuery,state: FSMContext):
     if callback_query.data == 'view_balance':
         try:
@@ -1987,15 +2666,43 @@ async def action_callback(callback_query: types.CallbackQuery,state: FSMContext)
         except Exception as e:
             await callback_query.message.reply(f"An error occurred: {str(e)}")
     elif callback_query.data == 'chang_balance':
-        await bot.send_message(callback_query.from_user.id, "Введите текст сообщения:")
-
+        await bot.send_message(callback_query.from_user.id, "Введите сумму подписки:")
         # Устанавливаем состояние, чтобы ожидать ответа пользователя
         await YooMoneySum.waiting_fot_sum.set()
 
-
-
+    elif callback_query.data == 'change_procent':
+        await bot.send_message(callback_query.from_user.id, "Введите процент скидки:")
+        # Устанавливаем состояние, чтобы ожидать ответа пользователя
+        await YooMoneyProcent.waiting_fot_procent.set()  
     else:
         pass
+
+
+@dp.message_handler(state=YooMoneyProcent.waiting_fot_procent)
+async def process_proc(message: Message, state: FSMContext):
+    try:
+        # Получаем введенную пользователем сумму
+        user_input = message.text
+        # Преобразуем введенный текст в число (проверьте, что это число)
+        sum_to_set = float(user_input)
+
+        # Изменяем сумму в Quickpay
+        conn = sqlite3.connect('my_database.db')
+        cursor = conn.cursor()
+
+        # Заданный id_telegram, для которого вы хотите получить client_id
+
+        # SQL-запрос для выбора client_id по id_telegram
+        cursor.execute("UPDATE payment SET procent = ?, telegram_id = ?",(sum_to_set,message.from_user.id))
+        conn.commit()
+        # Отправляем сообщение с новой суммой и ссылкой на оплату
+        await message.answer(f"Процент скидки изменили на {sum_to_set}%.")
+
+        # Завершаем состояние ожидания
+        await state.finish()
+
+    except ValueError:
+        await message.answer("Пожалуйста, введите корректное числовое значение для процентной скидки.")
 
 @dp.message_handler(state=YooMoneySum.waiting_fot_sum)
 async def process_sum(message: Message, state: FSMContext):
@@ -2006,10 +2713,16 @@ async def process_sum(message: Message, state: FSMContext):
         sum_to_set = float(user_input)
 
         # Изменяем сумму в Quickpay
-        redirected_url = change_sum(sum_to_set)
+        conn = sqlite3.connect('my_database.db')
+        cursor = conn.cursor()
 
+        # Заданный id_telegram, для которого вы хотите получить client_id
+
+        # SQL-запрос для выбора client_id по id_telegram
+        cursor.execute("UPDATE payment SET paysum = ?, telegram_id = ?",(sum_to_set,message.from_user.id))
+        conn.commit()
         # Отправляем сообщение с новой суммой и ссылкой на оплату
-        await message.answer(f"Сумма изменена на {sum_to_set} руб. Ссылка на оплату: {redirected_url}")
+        await message.answer(f"Сумма изменена на {sum_to_set} руб.")
 
         # Завершаем состояние ожидания
         await state.finish()
@@ -2051,8 +2764,7 @@ async def handle_text(message: types.Message):
         # Закрытие соединения с базой данных
         conn.close()
     else:
-        await bot.send_message(message.chat.id,'Ты написал</>')
-
+        pass
     # Здесь вы можете обрабатывать текстовые сообщения от пользователя
     # и выполнять соответствующие действия
 
@@ -2320,6 +3032,7 @@ async def process_time_msgs_data(token, avito_id, data, current_day_ru):
 
 async def send_unread_triggers():
     while True:
+        
         chat_data = get_chats_with_triggers()
         msgs = get_chats_with_msgs()
         time_msgs = get_chats_with_time_msgs()
@@ -2328,31 +3041,39 @@ async def send_unread_triggers():
         current_day_ru = day_mapping.get(current_day, current_day)
         print('Обаботка непрочитннах сообщений')
         for chat_id in chat_data:
-            print('i dont know')
+            test = get_time2(chat_id[1]) 
+            print('крч вот он enabled = ',chat_id[3])
+            if test and chat_id[3]:
+                print('i dont know')
 
-            token = get_token(chat_id[0])
-            avito_id = get_user_id(chat_id[0])
-            unread_messages = await get_unread_messagef_avito(token=token,user_id=avito_id)  # Асинхронная обработка непрочитанных сообщений
-            print(unread_messages)
-            if unread_messages:
-                for message in unread_messages["chats"]:
-                    user_text = message["last_message"]["content"]["text"]
-                    trigger, response_text = find_matching_trigger(user_text)
-                    if trigger and response_text:
-                        await send_message(avito_id, message["id"] ,response_text, token)
-                        await mark_chat_as_read(avito_id, chat_id[0], token)
-                        await bot.send_message(chat_id[0], text='Автоматический ответ отправлен')
+                token = get_token(chat_id[0])
+                avito_id = get_user_id(chat_id[0])
+                unread_messages = await get_unread_messagef_avito(token=token,user_id=avito_id)  # Асинхронная обработка непрочитанных сообщений
+                print(unread_messages)
+                if unread_messages:
+                    for message in unread_messages["chats"]:
+                        user_text = message["last_message"]["content"]["text"]
+                        trigger, response_text = find_matching_trigger(user_text)
+                        if trigger and response_text:
+                            await send_message(avito_id, message["id"] ,response_text, token)
+                            await mark_chat_as_read(avito_id, chat_id[0], token)
+                            await bot.send_message(chat_id[0], text='Автоматический ответ отправлен')
 
         print('Обаботка приветственных сообщений')
         for data in msgs:
-            token = get_token(data[2])
-            avito_id = get_user_id(data[2])
-            await process_msgs_data(token, avito_id, data, current_day_ru)
+          
+            test = get_time2(data[2])
+            if test and data[3]:
+                token = get_token(data[2])
+                avito_id = get_user_id(data[2])
+                await process_msgs_data(token, avito_id, data, current_day_ru)
         print('Обаботка сообщения за день в рабочее время или нет')
         for data in time_msgs:
-            token = get_token(data[2])
-            avito_id = get_user_id(data[2])
-            await process_time_msgs_data(token, avito_id, data, current_day_ru)
+            test = get_time2(data[2])
+            if test and data[3]:
+                token = get_token(data[2])
+                avito_id = get_user_id(data[2])
+                await process_time_msgs_data(token, avito_id, data, current_day_ru)
 
         await asyncio.sleep(7)
                                     
@@ -2362,6 +3083,15 @@ async def process_chats_with_data():
     while True:
         print('Отпрвка чатов в чат')
     # Получите чаты из базы данных, где заполнены avito_id, client_id, client_secret и token
+        conn = sqlite3.connect('my_database.db')
+        data = None
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT chat_id FROM chats")
+            data = cursor.fetchall()
+            conn.close() 
+        except:
+            pass
         chats_with_data = get_chats_with_data()
 
         print("Checking for unread messages...")  
@@ -2369,10 +3099,13 @@ async def process_chats_with_data():
             chat_id = chat[0]
             print(chat_id)
             # Выполните обработку поиска новых сообщений и отправку сообщений для этого чата
-            try:
-                await get_unread_messages(chat_id)
-            except Exception as e:
-                print(f"Error in get_unread_messages: {e}")
+            test = get_time2(chat_id)
+            print('vooot on',test)
+            if test:
+                try:
+                    await get_unread_messages(chat_id)
+                except Exception as e:
+                    print(f"Error in get_unread_messages: {e}")
 
         await asyncio.sleep(5)
 
@@ -2391,23 +3124,25 @@ async def check_work_msgs():
             conn.close() 
         except:
             pass
-
         if data:
             for item in data:
-                user_id = get_user_id(item[0])
-                token = get_token(item[0])
-                start_time = datetime.datetime.strptime(item[1], '%H:%M').time()
-                end_time = datetime.datetime.strptime(item[2], '%H:%M').time()
-                print(start_time)
-                print(start_time<=current_time<=end_time)
-                if start_time <= current_time <= end_time or end_time < start_time and (current_time >= start_time or current_time <= end_time):
-                    await send_message(chat_id=item[3], user_id=user_id, text=item[-1], token=token)
-                    await mark_chat_as_read(user_id, item[3], token=token)
-                    await bot.send_message(chat_id=item[0],text='Запланированное сообщение отправлено')
-                    clear_check_work_msgs(item[3])    
+                test = get_time2(item[0])
+                print('vot on test = ',test)
+                if test:
+                    user_id = get_user_id(item[0])
+                    token = get_token(item[0])
+                    start_time = datetime.datetime.strptime(item[1], '%H:%M').time()
+                    end_time = datetime.datetime.strptime(item[2], '%H:%M').time()
+                    print(start_time)
+                    print(start_time<=current_time<=end_time)
+                    if start_time <= current_time <= end_time or end_time < start_time and (current_time >= start_time or current_time <= end_time):
+                        await send_message(chat_id=item[3], user_id=user_id, text=item[-1], token=token)
+                        await mark_chat_as_read(user_id, item[3], token=token)
+                        await bot.send_message(chat_id=item[0],text='Запланированное сообщение отправлено')
+                        clear_check_work_msgs(item[3])    
 
-                else:
-                    print('nooo time')
+                    else:
+                        print('nooo time')
         await asyncio.sleep(5)
 
 
@@ -2427,52 +3162,57 @@ async def specific_time():
             conn.close() 
         except:
             pass
-        
         if data:
             for item in data:
-                user_id = get_user_id(item[0])
-                token = get_token(item[0])
-                time = datetime.datetime.strptime(item[1], '%H:%M').time()
+                test = get_time(item[0])
+                if test:
+                    user_id = get_user_id(item[0])
+                    token = get_token(item[0])
+                    time = datetime.datetime.strptime(item[1], '%H:%M').time()
 
-                if time == current_time:
+                    if time == current_time:
 
-                    await send_message(chat_id=item[2], user_id=user_id, text=item[-1], token=token)
-                    await mark_chat_as_read(user_id, item[2], token=token)
-                    await bot.send_message(chat_id=item[0],text='Запланированное сообщение отправлено')
-                    clear_specific_msgs_time(item[2]) 
+                        await send_message(chat_id=item[2], user_id=user_id, text=item[-1], token=token)
+                        await mark_chat_as_read(user_id, item[2], token=token)
+                        await bot.send_message(chat_id=item[0],text='Запланированное сообщение отправлено')
+                        clear_specific_msgs_time(item[2]) 
 
-                else:
-                    print('nooo specific')
+                    else:
+                        print('nooo specific')
         await asyncio.sleep(2)
 
 
 async def update_tokens_periodically():
     while True:
-        conn = sqlite3.connect('my_database.db')
-        cursor = conn.cursor()
-        cursor.execute("SELECT chat_id,client_id,client_secret FROM chats")
-        data = cursor.fetchall()
-        conn.close()
-
-        for chat in data:
-            print(chat[0])
-            await update_token_for_chat(chat[0],chat[1],chat[2])
-
-        # Ждите 24 часа перед следующим обновлением
+        try:
+            conn = sqlite3.connect('my_database.db')
+            cursor = conn.cursor()
+            cursor.execute("SELECT chat_id,client_id,client_secret FROM chats")
+            data = cursor.fetchall()
+            conn.close()
+            test = get_time(data[0])
+            if test:
+                for chat in data:
+                    print(chat[0])
+                    await update_token_for_chat(chat[0],chat[1],chat[2])
+            # Ждите 24 часа перед следующим обновление
+        except:
+            pass
         await asyncio.sleep(24 * 3600)  # 24 часа в секундах
 
 if __name__ == '__main__':
     make_db()
-    
+    insert_initial_data()
+
     loop = asyncio.get_event_loop()
 
     loop.create_task(update_tokens_periodically())
-    # loop.create_task(check_work_msgs())
-    # loop.create_task(specific_time())
-    # # Запустите задачу для обработки чатов с данными
-    # loop.create_task(process_chats_with_data())
+    loop.create_task(check_work_msgs())
+    loop.create_task(specific_time())
+    # Запустите задачу для обработки чатов с данными
+    loop.create_task(process_chats_with_data())
 
-    # loop.create_task(send_unread_triggers())
+    loop.create_task(send_unread_triggers())
     
 
     
