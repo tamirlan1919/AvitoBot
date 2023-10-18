@@ -53,7 +53,7 @@ def get_sum(tg_id):
                 quickpay_form="shop",
                 targets="Покупка на месяц Авито бота",
                 paymentType="SB",
-                sum=itog_summa,
+                sum=5,
                 label=tg_id
                 )
     return quickpay.redirected_url

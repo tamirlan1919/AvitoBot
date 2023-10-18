@@ -192,7 +192,6 @@ def get_token(idd):
     else:
        
 
-        print(f"Запись для id_telegram {target_id_telegram} не найдена")
         conn.close()
         return None
 
