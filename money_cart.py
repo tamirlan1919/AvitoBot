@@ -39,7 +39,7 @@ def get_sum(tg_id):
         # Шаг 3: Получить всех пользователей, у которых who_linked содержит link_rel
         cursor.execute("SELECT COUNT(*) FROM chats WHERE who_linked LIKE ?", (f'%{link_rel}%',))
         num_linked_users = cursor.fetchone()[0]  # Получаем количество пользователей, у которых есть ваш link_rel
-
+        
         # Шаг 4: Вычислить итоговую сумму
         itog_summa = paysum - ((paysum * (procent*num_linked_users))/100)
         
@@ -53,7 +53,7 @@ def get_sum(tg_id):
                 quickpay_form="shop",
                 targets="Покупка на месяц Авито бота",
                 paymentType="SB",
-                sum=5,
+                sum=itog_summa,
                 label=tg_id
                 )
     return quickpay.redirected_url

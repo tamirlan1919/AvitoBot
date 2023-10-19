@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS check_work_msgs (
     chat_id INTEGER,
     start_time TEXT,
     end_time TEXT,
+    week_days TEXT,
     avito_chat TEXT,
     response_text TEXT,
     FOREIGN KEY (chat_id) REFERENCES chats (chat_id)
@@ -294,10 +295,10 @@ def get_chats_with_triggers():
     except:
         return None
 
-def clear_check_work_msgs(avito_chat):
+def clear_check_work_msgs(id):
     conn = sqlite3.connect('my_database.db')
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM check_work_msgs WHERE avito_chat = ?", (avito_chat,))
+    cursor.execute("DELETE FROM check_work_msgs WHERE id = ?", (id,))
     conn.commit()
     conn.close()
 
