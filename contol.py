@@ -132,7 +132,7 @@ def insert_initial_data():
 
     if count == 0:
         # Если таблица пуста, вставляем начальные данные
-        cursor.execute("INSERT INTO payment (telegram_id, paysum, procent) VALUES (1, 1000.0, 20.0)")
+        cursor.execute("INSERT INTO payment (telegram_id, paysum, procent) VALUES (1, 10.0, 20.0)")
         conn.commit()
         print("Начальные данные успешно вставлены.")
     else:

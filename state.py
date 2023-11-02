@@ -116,3 +116,6 @@ class ChangeTimeResponseStateWeekDays(StatesGroup):
 
 class SetCode(StatesGroup):
     waiting_for_code= State()
+
+class UpdateDaysState(StatesGroup):
+    waiting_for_days = State()

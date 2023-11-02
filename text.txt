@@ -85,3 +85,9 @@ def change_work_get_updated_week_days_keyboard(selected_days):
 147695266
 xaH0A7QYOmyw8pQSgBMB
 PJdx4kcC-p8Z9e4RGDtTjfVfd15zOm5oQA2DyJUQ
+
+
+Шаблон:
+14674344
+1_nhGnfPxjj3fU8qSoJk
+9_WYrY2Ls9qkKa6RLTqAza8LnHIIzapOT2VfBDfP
