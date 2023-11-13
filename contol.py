@@ -35,6 +35,7 @@ def make_db():
         current_page_message_id INTEGER,
         who_linked TEXT,
         link_rel TEXT,
+        money REAL,
         FOREIGN KEY (acc_id) REFERENCES clients (id)
 
     );
@@ -107,6 +108,44 @@ CREATE TABLE IF NOT EXISTS payment (
     procent REAL
 );
 '''
+    create_money = '''
+CREATE TABLE IF NOT EXISTS money (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    telegram_id INTEGER,
+    chat TEXT,
+    paysum REAL,
+    fio TEXT,
+    card TEXT
+);
+'''
+    create_check_status = '''
+CREATE TABLE IF NOT EXISTS check_status (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id TEXT,
+    status INTEGER
+
+);
+'''
+    create_sum_bd = '''
+CREATE TABLE IF NOT EXISTS user_money_pay (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id TEXT,
+    tg_id TEXT,
+    sum INTEGER
+
+);
+'''
+    create_info_admins = '''
+CREATE TABLE IF NOT EXISTS info_admins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    telegram_id TEXT,
+    all_users INTEGER
+
+
+);
+'''
+    cursor.execute(create_sum_bd)
+    cursor.execute(create_info_admins)
     cursor.execute(create_timemsgs_table_query)
     cursor.execute(create_clients_table_query)
     cursor.execute(create_payment)
@@ -115,6 +154,8 @@ CREATE TABLE IF NOT EXISTS payment (
     cursor.execute(create_auto_responses_table_query)
     cursor.execute(create_check_work_msgs)
     cursor.execute(create_check_specific_msgs)
+    cursor.execute(create_money)
+    cursor.execute(create_check_status)
     # Сохранение изменений в базе данных
     conn.commit()
 
@@ -140,6 +181,26 @@ def insert_initial_data():
 
     conn.close()
 
+
+
+def insert_all_users():
+    conn = sqlite3.connect('my_database.db')  # Замените 'my_database.db' на ваше имя базы данных
+    cursor = conn.cursor()
+
+    # Проверяем, пуста ли таблица "payment"
+    cursor.execute("SELECT COUNT(*) FROM info_admins")
+    count = cursor.fetchone()[0]
+    print(count)
+    print('я в insert')
+    if count == 0:
+        # Если таблица пуста, вставляем начальные данные
+        cursor.execute("INSERT INTO info_admins (telegram_id,all_users) VALUES (5455171373, 0)")
+        conn.commit()
+        print("Начальные данные успешно вставлены.")
+    else:
+        print("Таблица уже содержит данные, начальные данные не вставляются.")
+
+    conn.close()
 
 
 def get_user_id(idd):
@@ -207,7 +268,16 @@ def get_subscription_end_date_from_database(user_id):
     cursor.execute('SELECT test_period_end FROM clients WHERE id_telegram = ?', (user_id,))
     result = cursor.fetchone()
     if result:
-        return datetime.datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S.%f')
+        return datetime.datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S')
+    return None
+
+def get_subscription_end_date_from_chats(user_id):
+    conn = sqlite3.connect('my_database.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT test_period FROM chats WHERE chat_id = ?', (user_id,))
+    result = cursor.fetchone()
+    if result:
+        return datetime.datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S')
     return None
 
 
@@ -339,7 +409,7 @@ def get_time(user_id):
     # Здесь предполагается, что вы извлекли дату и время окончания подписки из базы данных
     subscription_end_time = ''
     try:
-        subscription_end_time = datetime.datetime.strptime(test_period_end[0], '%Y-%m-%d %H:%M:%S.%f')
+        subscription_end_time = datetime.datetime.strptime(test_period_end[0], '%Y-%m-%d %H:%M:%S')
     except Exception as e:
         print('Error:', e)
     
@@ -362,7 +432,7 @@ def get_time2(user_id):
     # Здесь предполагается, что вы извлекли дату и время окончания подписки из базы данных
     subscription_end_time = ''
     try:
-        subscription_end_time = datetime.datetime.strptime(test_period_end[0], '%Y-%m-%d %H:%M:%S.%f')
+        subscription_end_time = datetime.datetime.strptime(test_period_end[0], '%Y-%m-%d %H:%M:%S')
     except Exception as e:
         print('Error:', e)
     
@@ -392,6 +462,22 @@ def get_enabled_triggers(chat_id):
 
     conn.close()
     return data
+
+
+def get_payment():
+    conn = sqlite3.connect('my_database.db')  # Замените 'your_database.db' на путь к вашей базе данных
+    cursor = conn.cursor()
+
+    # Выполните SQL-запрос для извлечения чатов с заполненными данными
+    cursor.execute('''
+        SELECT *
+        FROM payment''')
+
+    data = cursor.fetchone()
+
+    conn.close()
+    return data
+
 
 
 def get_enabled_msgs(chat_id):
@@ -464,3 +550,51 @@ async def update_token_for_chat(chat_id,client_id,client_secret):
 
 
 
+def get_referring_user_id_from_database(user_id):
+    try:
+        conn = sqlite3.connect('my_database.db')
+        cursor = conn.cursor()
+        
+        # Здесь вы должны реализовать запрос к базе данных для получения id пользователя, который привел текущего пользователя
+        cursor.execute("SELECT who_linked FROM chats WHERE chat_id = ?", (user_id,))
+        referring_user_id = cursor.fetchone()[0]  # Пример, замените на ваш запрос
+        
+        conn.close()
+        return referring_user_id
+    except:
+        return None
+def get_status(chat_id):
+    try:
+        conn = sqlite3.connect('my_database.db')
+        cursor = conn.cursor()
+        
+        # Здесь вы должны реализовать запрос к базе данных для получения id пользователя, который привел текущего пользователя
+        cursor.execute("SELECT chat_id,status FROM check_status WHERE chat_id = ?", (chat_id,))
+        referring_user_id = cursor.fetchone()  # Пример, замените на ваш запрос
+        
+        conn.close()
+        return referring_user_id
+    except:
+        return None
+
+
+
+def add_commission_to_balance(user_id, commission):
+    conn = sqlite3.connect('my_database.db')
+    cursor = conn.cursor()
+    
+    # Здесь вы должны реализовать запрос к базе данных для добавления комиссии к балансу пользователя
+    cursor.execute("UPDATE chats SET money = money + ? WHERE chat_id = ?", (commission, user_id))
+    
+    conn.commit()
+    conn.close()
+
+def add_money_to_user(user_id, amount):
+    conn = sqlite3.connect('my_database.db')
+    cursor = conn.cursor()
+    
+    # Здесь вы должны реализовать запрос к базе данных для добавления суммы к балансу пользователя
+    cursor.execute("UPDATE chats SET money = money + ? WHERE chat_id = ?", (amount, user_id))
+    
+    conn.commit()
+    conn.close()

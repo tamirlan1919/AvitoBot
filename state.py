@@ -119,3 +119,8 @@ class SetCode(StatesGroup):
 
 class UpdateDaysState(StatesGroup):
     waiting_for_days = State()
+
+class MoneyState(StatesGroup):
+    waiting_for_money = State()
+    waiting_for_fio = State()
+    waiting_for_card = State()
