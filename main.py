@@ -129,7 +129,6 @@ async def start(message: types.Message,state:FSMContext):
 
     # Создаем клавиатуру
     keyboard = types.InlineKeyboardMarkup()
-    print(message.chat.id,type(message.chat.id))
     if message.chat.id in admin_ids:
         keyboard.add(
             types.InlineKeyboardButton(text='🎥 Видео', callback_data='video'),
@@ -139,7 +138,7 @@ async def start(message: types.Message,state:FSMContext):
             types.InlineKeyboardButton(text='🤖 Автоответы', callback_data='auto_answera'),
             types.InlineKeyboardButton(text='❓ Помощь', callback_data='sos')
     )
-        keyboard.add(types.InlineKeyboardButton(text='Админ панель',callback_data='acc_back'))
+        keyboard.add(types.InlineKeyboardButton(text='🛠 Админ панель',callback_data='acc_back'))
     else:
         keyboard.add(
             types.InlineKeyboardButton(text='🎥 Видео', callback_data='video'),
@@ -149,8 +148,8 @@ async def start(message: types.Message,state:FSMContext):
             types.InlineKeyboardButton(text='🤖 Автоответы', callback_data='auto_answera'),
             types.InlineKeyboardButton(text='❓ Помощь', callback_data='sos')
     )
-    keyboard.add(types.InlineKeyboardButton(text='Выплаты', callback_data='send_money'))
-    keyboard.add(types.InlineKeyboardButton(text='Баланс',callback_data='my_balance'))
+    keyboard.add(types.InlineKeyboardButton(text='💰 Выплаты', callback_data='send_money'))
+    keyboard.add(types.InlineKeyboardButton(text='💳 Баланс',callback_data='my_balance'))
 
 
     try:
@@ -176,7 +175,6 @@ async def start_group(message: types.Message,state:FSMContext):
     # Вставляем запись в таблицу chats
     conn = sqlite3.connect('my_database.db')
     cursor = conn.cursor()
-    print('что таке')
     try:
         cursor.execute('SELECT id FROM clients WHERE id_telegram = ?', (user_id_telegram,))
         user_id = cursor.fetchone()
@@ -184,15 +182,12 @@ async def start_group(message: types.Message,state:FSMContext):
             # Check if the test_period exists in the clients table
             cursor.execute('SELECT test_period_end FROM clients WHERE id = ?', (user_id[0],))
             test_per = cursor.fetchone()
-            print(test_per)
             if test_per[0] is not None:
                 # Проверяем, существует ли запись с такими acc_id и chat_id
                 cursor.execute('SELECT id FROM chats WHERE acc_id = ? AND chat_id = ?', (user_id[0], chat_id))
                 existing_chat = cursor.fetchone()
-                print('зашел')
-                print(existing_chat)
+
                 if not existing_chat:
-                    print('не зашел')
                     # Если запись не существует, вставляем новую запись в таблицу chats
                     cursor.execute('INSERT INTO chats (chat_id, acc_id, test_period, link_rel, money) VALUES (?, ?, ?, ?, ?)', (chat_id, user_id[0], test_per[0], message.chat.id, 0))
                     conn.commit()
@@ -218,6 +213,8 @@ async def start_group(message: types.Message,state:FSMContext):
                     keyboard.add(types.InlineKeyboardButton(text='💳 Проверить платежи', callback_data='check_money'))
                     keyboard.add(types.InlineKeyboardButton(text='➕ Подключить аккаунт',callback_data='check_connection'))
                     keyboard.add(types.InlineKeyboardButton(text='🔌 Реф ссылка',callback_data='check_ref'))
+                    keyboard.add(types.InlineKeyboardButton(text="🤖 К боту", url='https://t.me/tiqavito_bot'))
+
 
                     await bot.send_message(message.chat.id,text='Выберите опцию',reply_markup=keyboard)
                 else:
@@ -239,6 +236,8 @@ async def start_group(message: types.Message,state:FSMContext):
                     keyboard.add(types.InlineKeyboardButton(text='💳 Проверить платежи', callback_data='check_money'))
                     keyboard.add(types.InlineKeyboardButton(text='➕ Подключить аккаунт',callback_data='check_connection'))
                     keyboard.add(types.InlineKeyboardButton(text='🔌 Реф ссылка',callback_data='check_ref'))
+                    keyboard.add(types.InlineKeyboardButton(text="🤖 К боту", url='https://t.me/tiqavito_bot'))
+
 
 
                     await bot.send_message(message.chat.id,text='Выберите опцию',reply_markup=keyboard)
@@ -517,32 +516,35 @@ async def type_code(callback_query: types.CallbackQuery,state: FSMContext):
 
 @dp.message_handler(state=SetCode.waiting_for_code)
 async def enter_response(message: types.Message, state: FSMContext):
-    async with state.proxy() as data:
-        chat_id = data['chat_id']
-        response_text = message.text
+    if message.text == str(message.chat.id):
+        await bot.send_message(message.chat.id,'Вы указали свой пригласительный код')
+    else:
+        async with state.proxy() as data:
+            chat_id = data['chat_id']
+            response_text = message.text
 
-        # Проверяем, существует ли запись для данного chat_id и trigger
-        conn = sqlite3.connect('my_database.db')
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM chats WHERE chat_id=?", (str(response_text), ))
-        existing_record = cursor.fetchone()
-        if existing_record:
-            # Если запись существует, обновляем её
-            cursor.execute("UPDATE chats SET who_linked=?  WHERE chat_id=?",
-                           (response_text, str(chat_id)))
-            await message.reply(f"Пригласительный код записан")
+            # Проверяем, существует ли запись для данного chat_id и trigger
+            conn = sqlite3.connect('my_database.db')
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM chats WHERE chat_id=?", (str(response_text), ))
+            existing_record = cursor.fetchone()
+            if existing_record:
+                # Если запись существует, обновляем её
+                cursor.execute("UPDATE chats SET who_linked=?  WHERE chat_id=?",
+                            (response_text, str(chat_id)))
+                await message.reply(f"Пригласительный код записан")
 
-        else:
-            await message.reply('Упс вы может ошиблись но такого пригласительного кода не существует.')
+            else:
+                await message.reply('Упс вы может ошиблись но такого пригласительного кода не существует.')
 
 
-        conn.commit()
-        conn.close()
+            conn.commit()
+            conn.close()
 
-        await state.finish()
-        keyboard = types.InlineKeyboardMarkup()
-        keyboard.add(types.InlineKeyboardButton(text='Вернуться назад',callback_data='code_back'))
-        await bot.send_message(message.chat.id,'Выберите опцию',reply_markup=keyboard)
+    await state.finish()
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(types.InlineKeyboardButton(text='Вернуться назад',callback_data='code_back'))
+    await bot.send_message(message.chat.id,'Выберите опцию',reply_markup=keyboard)
 
 
 
@@ -593,26 +595,15 @@ async def check_money(callback_query: types.CallbackQuery):
     
     if recent_operations:
         for i, recent_operation in enumerate(recent_operations):
-            print(f"Operation {i + 1}:", recent_operation.operation_id)
-            print("\tStatus     -->", recent_operation.status)
-            print("\tDatetime   -->", recent_operation.datetime)
-            print("\tTitle      -->", recent_operation.title)
-            print("\tPattern id -->", recent_operation.pattern_id)
-            print("\tDirection  -->", recent_operation.direction)
-            print("\tAmount     -->", recent_operation.amount)
-            print("\tLabel      -->", recent_operation.label)
-            print("\tType       -->", recent_operation.type)
+
             
             # Добавляем информацию о каждой успешной оплате к тексту сообщения
             text += f"<b>Платеж #{recent_operation.operation_id}</b>\n"
             text += f"Статус: {recent_operation.status}\n"
             text += f"Дата и время: {recent_operation.datetime}\n"
-            text += f"Сумма: {recent_operation.amount}\n"
-            text += f"Тип: {recent_operation.type}\n\n"
-            print(recent_operation.type)
+            text += f"Сумма: {recent_operation.amount}\n\n"
 
         how_much = len(recent_operations)
-        print(how_much)
         if subscription_end_date is None:
             subscription_end_date = recent_operations[0].datetime
 
@@ -620,23 +611,25 @@ async def check_money(callback_query: types.CallbackQuery):
         one_month_later = subscription_end_date + datetime.timedelta(days=30 * how_much)
         update_subscription_end_date_in_database(callback_query.message.chat.id, one_month_later)
         status = get_status(callback_query.message.chat.id)
-        print(f'вот статус {status}')
-        print(status[1],type(status[1]))
         if status[1] == 0:
-            print('Зашел')
             cursor.execute('UPDATE check_status SET status = ? WHERE chat_id = ?', (1, callback_query.message.chat.id))
             conn.commit()        
             data = get_payment()     
             itog_summa = data[-2]  # Замените на реальную сумму начисления
             commission = itog_summa * (data[-1]/100) # 20% начисления
-            cursor.execute('SELECT sum FROM user_money_pay WHERE chat_id = ?', (callback_query.message.chat.id,))
+            cursor.execute('SELECT money FROM chats WHERE chat_id = ?', (callback_query.message.chat.id,))
             current_sum = cursor.fetchone()[0]
             cursor.execute('SELECT all_users FROM info_admins ')
             all_users = cursor.fetchone()[0]
+            if all_users == 0:
+                all_users+=1
+            else:
+                all_users+=1
             # Рассчитываем новую сумму
             new_sum = current_sum + commission  # Предполагается, что commission - это новое начисление
-
             # Обновление значения в базе данных
+            cursor.execute('UPDATE chats SET money = ? WHERE chat_id = ?', (new_sum, callback_query.message.chat.id))
+            conn.commit()
             cursor.execute('UPDATE user_money_pay SET sum = ? WHERE chat_id = ?', (new_sum, callback_query.message.chat.id))
             conn.commit()
             cursor.execute('UPDATE info_admins SET all_users = ? ', (all_users, ))
@@ -677,6 +670,8 @@ async def back_chat_menu(callback_query: types.CallbackQuery):
     keyboard.add(types.InlineKeyboardButton(text='💳 Проверить платежи', callback_data='check_money'))
     keyboard.add(types.InlineKeyboardButton(text='➕ Подключить аккаунт',callback_data='check_connection'))
     keyboard.add(types.InlineKeyboardButton(text='🔌 Реф ссылка',callback_data='check_ref'))
+    keyboard.add(types.InlineKeyboardButton(text="🤖 К боту", url='https://t.me/tiqavito_bot'))
+
 
     await bot.answer_callback_query(callback_query_id=callback_query.id)  # Отмечаем кнопку как обработанную
 
@@ -727,9 +722,14 @@ async def test_start(callback_query: types.CallbackQuery):
         cursor.execute('INSERT INTO clients (id_telegram, test_period_end) VALUES (?, ?)', (user_id, test_period_end))
     else:
         # Если значение "тестовый период" уже существует, обновляем его
-        test_period_end = datetime.datetime.now() + datetime.timedelta(days=1)
-        cursor.execute('UPDATE clients SET test_period_end = ? WHERE id_telegram = ?', (test_period_end, user_id))
+        current_time = datetime.datetime.now()
 
+        # Округление времени до секунд
+        current_time_without_microseconds = current_time.replace(microsecond=0)
+
+        # Пример использования в вашем коде
+        test_period_end = current_time_without_microseconds + datetime.timedelta(days=7)
+        cursor.execute('UPDATE clients SET test_period_end = ? WHERE id_telegram = ?', (test_period_end, user_id))
     conn.commit()
     conn.close()
 
@@ -961,13 +961,13 @@ async def pomosh(callback_query: types.CallbackQuery):
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data == 'sos_with_me')
 async def req_avito(callback_query: types.CallbackQuery):
-    text = """
+    text = f"""
 🤝 <b>Поддержка команды</b>
 AvitoAuto готова помочь вам 24/7! Мы всегда рядом, чтобы предоставить качественную поддержку.
 
 ‼️ Отвечаем ежедневно с 10:00 до 00:00. Но не переживайте, мы также отвечаем в нерабочее время! Ваше удобство - наш приоритет.
 
-📤 <a href="https://t.me/codenlx">Свяжитесь с нами</a> для получения быстрой и профессиональной помощи.
+📤 <a href="{me_link}">Свяжитесь с нами</a> для получения быстрой и профессиональной помощи.
 
 🚀 Мы готовы сделать все возможное, чтобы удовлетворить ваши потребности.
 
@@ -1117,7 +1117,6 @@ async def certainUser(callback_query: types.CallbackQuery):
             message_text+= f'Название: <b>Автоответ на первое сообщение</b>\n'
             message_text+= f'Заголовок: {msgs_data[1]}\n'
             message_text+= f'Дни недели: {msgs_data[4]}\n'
-            message_text+= f'Вопрос: {msgs_data[-3]}\n'
             message_text+= f'Ответ: {msgs_data[-1]}\n'
 
             keyboard = types.InlineKeyboardMarkup()
@@ -1133,7 +1132,7 @@ async def certainUser(callback_query: types.CallbackQuery):
             await bot.answer_callback_query(callback_query_id=callback_query.id)  # Отмечаем кнопку как обработанную
 
             await bot.send_message(callback_query.message.chat.id,text=message_text,reply_markup=keyboard,parse_mode='html')
-            
+
             # Добавляем информацию из таблицы 'msgs'
 
         if time_msgs_data:
@@ -1181,7 +1180,7 @@ async def certainUser(callback_query: types.CallbackQuery):
             await bot.send_message(callback_query.message.chat.id,'У вас нет некоторых подготовленных сообщений)')
     keyboard = types.InlineKeyboardMarkup()
     keyboard.add(types.InlineKeyboardButton(text='⬅️ Вернуться в меню',callback_data='back_menu_show'))
-
+    await bot.send_message(callback_query.message.chat.id,'Выберите опцию',reply_markup=keyboard)
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith(('Troff', 'TrOn','TrDelete','TrCangeTriggers','TrChangeAns')))
 async def Trprocessing(callback_query: types.CallbackQuery,state: FSMContext):
@@ -1789,7 +1788,6 @@ async def time_message(callback_query: types.CallbackQuery):
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith(('cancel')))
 async def cancel(callback_query: types.CallbackQuery, state: FSMContext):
-    print('ееей')
     await state.finish()
     await bot.send_message(callback_query.message.chat.id,'Обработка отменена')
     
@@ -2195,7 +2193,6 @@ async def first_message(callback_query: types.CallbackQuery):
 @dp.callback_query_handler(lambda callback_query: callback_query.data == 'back_main')
 async def back_main(callback_query: types.CallbackQuery):
     keyboard = types.InlineKeyboardMarkup()
-    print(callback_query.message.chat.id)
     if callback_query.message.chat.id in admin_ids:
         keyboard.add(
             types.InlineKeyboardButton(text='🎥 Видео', callback_data='video'),
@@ -2205,7 +2202,7 @@ async def back_main(callback_query: types.CallbackQuery):
             types.InlineKeyboardButton(text='🤖 Автоответы', callback_data='auto_answera'),
             types.InlineKeyboardButton(text='❓ Помощь', callback_data='sos')
     )
-        keyboard.add(types.InlineKeyboardButton(text='Админ панель',callback_data='acc_back'))
+        keyboard.add(types.InlineKeyboardButton(text='🛠 Админ панель',callback_data='acc_back'))
     else:
         keyboard.add(
             types.InlineKeyboardButton(text='🎥 Видео', callback_data='video'),
@@ -2215,8 +2212,8 @@ async def back_main(callback_query: types.CallbackQuery):
             types.InlineKeyboardButton(text='🤖 Автоответы', callback_data='auto_answera'),
             types.InlineKeyboardButton(text='❓ Помощь', callback_data='sos')
     )
-    keyboard.add(types.InlineKeyboardButton(text='Выплаты', callback_data='send_money'))
-    keyboard.add(types.InlineKeyboardButton(text='Баланс',callback_data='my_balance'))
+    keyboard.add(types.InlineKeyboardButton(text='💰 Выплаты', callback_data='send_money'))
+    keyboard.add(types.InlineKeyboardButton(text='💳 Баланс',callback_data='my_balance'))
 
     try:
         conn = sqlite3.connect('my_database.db')
@@ -2767,7 +2764,6 @@ async def action_callback(callback_query: types.CallbackQuery,state: FSMContext)
     chat_text = ''
     action_data = callback_query.data.split('^')
     action = action_data[0]
-    print(action_data)
     if len(action_data)>2:
         user_id, chat_id  = action_data[1], action_data[2]
     else:
@@ -2915,8 +2911,7 @@ async def wstop(callback_query: types.CallbackQuery, state: FSMContext):
     await bot.edit_message_text(
         text="Действие отменено",
         chat_id=callback_query.message.chat.id,
-        message_id=callback_query.message.message_id,
-        reply_markup=keyboard,
+        message_id=callback_query.message.message_id
     )
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('send-custom-time^'))
@@ -2925,6 +2920,11 @@ async def send_custom_time(callback_query: types.CallbackQuery, state: FSMContex
     action_data = callback_query.data.split('^')
     user_id, chat_id = action_data[0], action_data[1] 
     cancel_button = types.InlineKeyboardButton("Отмена", callback_data=f'cstop')
+    async with state.proxy() as data:
+        data['chat_id'] = chat_id
+        data['user_id'] = user_id
+        data['telegram_chat_id'] = callback_query.message.chat.id 
+
     await SpecificTimeMessage.waiting_for_text.set()
     await bot.answer_callback_query(callback_query_id=callback_query.id)  # Отмечаем кнопку как обработанную
 
@@ -2942,14 +2942,20 @@ async def cstop(callback_query: types.CallbackQuery, state: FSMContext):
     await state.finish()
     await bot.send_message(callback_query.message.chat.id,'Действие отменено')
 
+    # action_data = callback_query.data
+    # action_data = callback_query.data.split('^')
+    # user_id, chat_id = action_data[0], action_data[1]
+    # print(f'Вот чат айди {chat_id}\nВот тг айди {user_id}')
+    #     # Запрашиваем текст у пользователя
+    # await bot.send_message(callback_query.message.chat.id, "Введите текст сообщения:")
+    # # Сохраняем chat_id и user_id в состоянии, чтобы использовать их в следующем шаге
+    # async with state.proxy() as data:
+    #     data['chat_id'] = chat_id
+    #     data['user_id'] = user_id
+    #     data['telegram_chat_id'] = callback_query.message.chat.id 
 
-
-
-    # Сохраняем chat_id и user_id в состоянии, чтобы использовать их в следующем шаге
-    async with state.proxy() as data:
-        data['chat_id'] = chat_id
-        data['user_id'] = user_id
-        data['telegram_chat_id'] = callback_query.message.chat.id  # Добавляем chat_id Telegram чата
+    # # Устанавливаем состояние, чтобы ожидать ответа пользователя
+    # await SpecificTimeMessage.waiting_for_text.set()
 
 
 @dp.message_handler(state=WorkTimeMessage.waiting_for_text)
@@ -2989,62 +2995,50 @@ async def process_time(message: Message, state: FSMContext):
         async with state.proxy() as data:
             data['response_text'] = response_text
 
-        await bot.send_message(message.chat.id, "Пожалуйста, введите время в формате HH:MM (например, 14:30).")
+        await bot.send_message(message.chat.id, "Пожалуйста, введите время в формате HH:MM (например, 14:30)\n<b>Учитываете что время МСК+3 у меня</b>",parse_mode='html')
 
         # Переход к следующему состоянию ожидания времени
         await SpecificTimeMessage.next()
     except Exception as e:
         await bot.send_message(message.chat.id, "Произошла ошибка при обработке текста сообщения.")
-
-
 @dp.message_handler(lambda message: message.text and ":" in message.text, state=SpecificTimeMessage.waiting_for_time)
 async def process_time(message: Message, state: FSMContext):
-    try:
-        # Получаем время от пользователя
-        user_time = message.text
-        if ':' not in user_time:
-            await bot.send_message(message.chat.id, "Время введено некорректно.")
-        
-        # Разбиваем строку с временем на часы и минуты
-        hours, minutes = map(int, user_time.split(':'))
-        
-        # Проверяем, что время валидно (например, часы от 0 до 23, минуты от 0 до 59)
-        if 0 <= hours <= 23 and 0 <= minutes <= 59:
-            # Добавляем ведущий ноль к минутам, если они однозначные
-            user_time = f"{hours:02d}:{minutes:02d}"
-            
-            async with state.proxy() as data:
-                chat_id = data['chat_id']
-                user_id = data['user_id']
-                telegram_chat_id = data['telegram_chat_id']
-                response_text = data['response_text']
+   
+    # Получаем время от пользователя
+    user_time = message.text
+    telegram_chat_id = ''
+    # Разбиваем строку с временем на часы и минуты
+    hours, minutes = map(int, user_time.split(':'))
 
-                conn = sqlite3.connect('my_database.db')
-                cursor = conn.cursor()
-                cursor.execute('INSERT INTO specific_msgs_time (chat_id, time, avito_chat, response_text) VALUES (?, ?, ?, ?)',
-                                (message.chat.id, user_time, chat_id, response_text))
-                conn.commit()
-                conn.close()
+    # Проверяем, что время валидно (например, часы от 0 до 23, минуты от 0 до 59)
+    if 0 <= hours <= 23 and 0 <= minutes <= 59:
+        async with state.proxy() as data:
+            chat_id = data['chat_id']
+            user_id = data['user_id']
+            telegram_chat_id = data['telegram_chat_id']
+            response_text = data['response_text']
 
-                # Отправляем уведомление о успешной отправке сообщения
-                keyboard = types.InlineKeyboardMarkup(row_width=2)
-                keyboard.add(types.InlineKeyboardButton(text="📨Отправить сообщение еще раз", callback_data=f'send-message^{user_id}^{chat_id}'))
-                keyboard.add(types.InlineKeyboardButton(text="🔚Назад", callback_data=f'seend^{user_id}^{chat_id}'))
+            conn = sqlite3.connect('my_database.db')
+            cursor = conn.cursor()
+            cursor.execute('INSERT INTO specific_msgs_time (chat_id, time, avito_chat, response_text) VALUES (?, ?, ?, ?)',
+                            (message.chat.id, user_time, chat_id, response_text))
+            conn.commit()
+            conn.close()
 
-                await bot.send_message(
-                    chat_id=telegram_chat_id,
-                    text='Сообщение успешно добавлено в список ожидаемых для отправки',
-                    parse_mode='html',
-                    reply_markup=keyboard
-                )
-                # Завершаем состояние
-                await state.finish()
-        else:
-            await bot.send_message(message.chat.id, "Время введено некорректно. Пожалуйста, введите время в формате HH:MM.")
-    except Exception as e:
-        await bot.send_message(message.chat.id, "Произошла ошибка при обработке времени. Пожалуйста, введите время в формате HH:MM.")
-
-
+            # Отправляем уведомление о успешной отправке сообщения
+            keyboard = types.InlineKeyboardMarkup(row_width=2)
+            keyboard.add(types.InlineKeyboardButton(text="📨Отправить сообщение еще раз", callback_data=f'send-message^{user_id}^{chat_id}'))
+            keyboard.add(types.InlineKeyboardButton(text="🔚Назад", callback_data=f'seend^{user_id}^{chat_id}'))
+            await bot.send_message(
+                chat_id=telegram_chat_id,
+                text='Сообщение успешно добавлено в список ожидаемых для отправки',
+                parse_mode='html',
+                reply_markup=keyboard
+            )
+            # Завершаем состояние
+            await state.finish()
+    else:
+        await bot.send_message(telegram_chat_id, "Время введено некорректно. Пожалуйста, введите время в формате HH:MM.")
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('send-working-hours^'))
 async def send_working_hours(callback_query: types.CallbackQuery,state: FSMContext):
@@ -3075,11 +3069,9 @@ async def send_working_hours(callback_query: types.CallbackQuery,state: FSMConte
 async def send_now(callback_query: types.CallbackQuery,state: FSMContext):
     
     action_data = callback_query.data
-    print(action_data)
     chat_text = ''
     action_data = callback_query.data.split('^')
     user_id, chat_id = action_data[0], action_data[1]
-    print(user_id,chat_id)
     # Запрашиваем текст у пользователя
     await bot.answer_callback_query(callback_query_id=callback_query.id)  # Отмечаем кнопку как обработанную
     cancel_button = types.InlineKeyboardButton("Отмена", callback_data=f'nstop')
@@ -3171,7 +3163,6 @@ async def check_pattern(message: types.Message):
     if message.text.lower().startswith("шаблон"):
         # Если сообщение начинается с "Шаблон", выполните нужные действия
         lst = message.text.split('\n')
-        print(lst)
         conn = sqlite3.connect('my_database.db')
         cursor = conn.cursor()
         if len(lst)==4:
@@ -3243,7 +3234,6 @@ async def get_account_info(message: types.Message):
         keyboard = types.InlineKeyboardMarkup(row_width=2)
         keyboard.add(types.InlineKeyboardButton(text="🔎 Посмотреть баланс", callback_data=f'view_balance'),types.InlineKeyboardButton(text="✍️ Изменить сумму ", callback_data=f'chang_balance'))
         keyboard.add(types.InlineKeyboardButton(text='⁒ Изменить скидку по реферальной ссылку',callback_data='change_procent'))
-        keyboard.add(types.InlineKeyboardButton(text="🕸 Посмотореть ссылку для оплаты ", url='https://yoomoney.ru/transfer/quickpay?requestId=353339313234373332315f64636536343062613739396163313832353138336465376132343935653739633136313830646464'))
         keyboard.add(types.InlineKeyboardButton(text='Посмотреть статиску',callback_data='show_statistic'))
         keyboard.add(types.InlineKeyboardButton(text='Поменять тариф',callback_data='change_tarif'))
         keyboard.add(types.InlineKeyboardButton(text="🔚Назад", callback_data=f'main_back'))
@@ -3369,10 +3359,32 @@ async def action_callback(callback_query: types.CallbackQuery,state: FSMContext)
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith(('select_user_')))
 async def current_us(callback_query: types.CallbackQuery, state: FSMContext):
-    action_data = callback_query.data.split('_')
-    await bot.send_message(callback_query.message.chat.id,'Введите кол-во дней для добавления в тариф пользователя')
-    await UpdateDaysState.waiting_for_days.set()
-    await state.update_data(user_id=action_data[2])
+    try:
+        action_data = callback_query.data.split('_')
+        keyboard = types.InlineKeyboardMarkup()
+        keyboard.add(types.InlineKeyboardButton(text='Отмена',callback_data='st_days'))
+        conn = sqlite3.connect('my_database.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT test_period FROM chats WHERE  chat_id = ?",(action_data[-1],))
+        date = cursor.fetchone()[0]
+        days_to_expiry = calculate_days_to_expiry(date)  # Замените на ваш метод для расчета оставшихся дней
+
+        response_text = f'Осталось {days_to_expiry} дней до завершения подписки. Вы можете добавить или убавить дни.\n\n' \
+                        f'Пример добавления: 15\nПример убавления: -15'
+        await bot.send_message(callback_query.message.chat.id, response_text,reply_markup=keyboard)
+        await UpdateDaysState.waiting_for_days.set()
+        await state.update_data(user_id=action_data[2])
+    except:
+        pass
+    finally:
+        conn.close()
+    
+@dp.callback_query_handler(lambda callback_query: callback_query.data == 'st_days',state=UpdateDaysState)
+async def st_days(callback_query: types.CallbackQuery,state: FSMContext):
+    await state.finish()
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(types.InlineKeyboardButton(text='Назад',callback_data='change_tarif'))
+    await bot.send_message(callback_query.message.chat.id,'Действие отменено',reply_markup=keyboard)
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data == 'who_payed')
 async def who_payed(callback_query: types.CallbackQuery):
@@ -3394,14 +3406,17 @@ async def who_payed(callback_query: types.CallbackQuery):
             for subscription in subscriptions:
                 acc_id = subscription[1]
                 cursor.execute("SELECT sum FROM user_money_pay WHERE id = ?", (acc_id,))
-                sum_user = cursor.fetchone()[0]           
+                sum_user = cursor.fetchone()[0]
+                if sum_user == None:
+                    sum_user = 0
+
                 cursor.execute("SELECT id_telegram FROM clients WHERE id = ?", (acc_id,))
                 id_telegram = cursor.fetchone()
                 user = await bot.get_chat(id_telegram[0])
                 chat = await bot.get_chat(subscription[0])
                 test_period = datetime.datetime.strptime(subscription[2], '%Y-%m-%d %H:%M:%S')
                 formatted_test_period = test_period.strftime('%Y-%m-%d %H:%M')
-                message += f"Аккаунт <a href='{user.user_url}'>{user.username}</a> в группе {chat.title} заработал {sum_user}\n"
+                message += f"Аккаунт <a href='{user.user_url}'>{user.username}</a> в группе {chat.title} заработал {sum_user} ₽ \n"
             keyboard = types.InlineKeyboardMarkup()
             keyboard.add(types.InlineKeyboardButton(text='Вернуться назад', callback_data='stat_back'))
 
@@ -3431,11 +3446,11 @@ async def show_otchet(callback_query: types.CallbackQuery):
         users_count = cursor.fetchone()[0]
         cursor.execute("SELECT COUNT(*) FROM clients WHERE test_period_end IS NOT NULL")
         users_count_test = cursor.fetchone()[0]
-        cursor.execute("SELECT COUNT(*) FROM chats WHERE id_avito AND client_id AND client_secret AND token IS NOT NULL")
+        cursor.execute("SELECT COUNT(*) FROM chats WHERE id_avito IS NOT NULL AND client_id IS NOT NULL AND client_secret IS NOT NULL AND token IS NOT NULL")
         users_count_avito = cursor.fetchone()[0]
         cursor.execute("SELECT all_users FROM info_admins")
         vse = cursor.fetchone()[0]
-        message = f'Всего людей нажало на /start = {users_count}\nПолучили тестовый ключ = {users_count_test}\nПодключили Avito аккаунт - {users_count_avito}\nВсего купили подписку - {vse}'
+        message = f'Всего людей нажало на /start = {users_count}\nПолучили тестовый ключ = {users_count_test}\nПодключили Avito аккаунт - {users_count_avito}\nВсего купили подписку - {vse} раз'
         await bot.edit_message_text(chat_id=callback_query.message.chat.id,
                                         message_id=callback_query.message.message_id,
                                         text= message, parse_mode='html',reply_markup=keyboard)
@@ -3444,6 +3459,8 @@ async def show_otchet(callback_query: types.CallbackQuery):
 
     except Exception as e:
         await bot.send_message(callback_query.message.chat.id,f'Ошибка - {str(e)}' )
+    finally:
+        conn.close()
 
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data == 'stat_back')
@@ -3480,11 +3497,17 @@ async def show_podpisk(callback_query: types.CallbackQuery):
         # Получите информацию о подписках из базы данных
         cursor.execute("SELECT chat_id, acc_id, test_period FROM chats")
         subscriptions = cursor.fetchall()
+        cursor.execute("SELECT COUNT(*) FROM clients WHERE id_telegram IS NOT NULL")
+        users_count = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM chats WHERE chat_id IS NOT NULL")
+        chats_count = cursor.fetchone()[0]  
         current_time_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         current_time = datetime.datetime.strptime(current_time_str, "%Y-%m-%d %H:%M:%S")
 
         if subscriptions:
-            message = "<b>Активные подписки:</b>\n\n"
+            message = f"<b>Всего подписчиков - {users_count}:</b>\n\n"
+            message+= f'<b>Всего групп - {chats_count}</b>\n\n'
+            message += f'<b>Активные подписчики</b>\n\n'
             for subscription in subscriptions:
                 time = datetime.datetime.strptime(subscription[2], '%Y-%m-%d %H:%M:%S')
                 if time >= current_time:
@@ -3515,14 +3538,13 @@ async def show_podpisk(callback_query: types.CallbackQuery):
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data == 'acc_back')
 async def back_acc(callback_query: types.CallbackQuery):
-    print('dont ')
+    
     await bot.answer_callback_query(callback_query_id=callback_query.id)  # Отмечаем кнопку как обработанную
 
     try:
         keyboard = types.InlineKeyboardMarkup(row_width=2)
         keyboard.add(types.InlineKeyboardButton(text="🔎 Посмотреть баланс", callback_data=f'view_balance'),types.InlineKeyboardButton(text="✍️ Изменить сумму ", callback_data=f'chang_balance'))
-        keyboard.add(types.InlineKeyboardButton(text='⁒ Скидка по реферальной ссылке',callback_data='change_procent'))
-        keyboard.add(types.InlineKeyboardButton(text="🕸 Посмотореть ссылку для оплаты ", url='https://yoomoney.ru/transfer/quickpay?requestId=353339313234373332315f64636536343062613739396163313832353138336465376132343935653739633136313830646464'))
+        keyboard.add(types.InlineKeyboardButton(text='Изменить ⁒ по реф. системе',callback_data='change_procent'))
         keyboard.add(types.InlineKeyboardButton(text='Посмотреть статиску',callback_data='show_statistic'))
         keyboard.add(types.InlineKeyboardButton(text='Поменять тариф',callback_data='change_tarif'))
         keyboard.add(types.InlineKeyboardButton(text="🔚Назад", callback_data=f'main_back'))
@@ -3543,7 +3565,6 @@ async def main_back(callback_query: types.CallbackQuery):
     keyboard = types.InlineKeyboardMarkup()
     conn = sqlite3.connect('my_database.db')
     cursor = conn.cursor()
-    print(callback_query.message.chat.id)
     if callback_query.message.chat.id in admin_ids:
         keyboard.add(
             types.InlineKeyboardButton(text='🎥 Видео', callback_data='video'),
@@ -3553,7 +3574,7 @@ async def main_back(callback_query: types.CallbackQuery):
             types.InlineKeyboardButton(text='🤖 Автоответы', callback_data='auto_answera'),
             types.InlineKeyboardButton(text='❓ Помощь', callback_data='sos')
     )
-        keyboard.add(types.InlineKeyboardButton(text='Админ панель',callback_data='acc_back'))
+        keyboard.add(types.InlineKeyboardButton(text='🛠 Админ панель',callback_data='acc_back'))
     else:
         keyboard.add(
             types.InlineKeyboardButton(text='🎥 Видео', callback_data='video'),
@@ -3563,8 +3584,8 @@ async def main_back(callback_query: types.CallbackQuery):
             types.InlineKeyboardButton(text='🤖 Автоответы', callback_data='auto_answera'),
             types.InlineKeyboardButton(text='❓ Помощь', callback_data='sos')
     )
-    keyboard.add(types.InlineKeyboardButton(text='Выплаты', callback_data='send_money'))
-    keyboard.add(types.InlineKeyboardButton(text='Баланс',callback_data='my_balance'))
+    keyboard.add(types.InlineKeyboardButton(text='💰 Выплаты', callback_data='send_money'))
+    keyboard.add(types.InlineKeyboardButton(text='💳 Баланс',callback_data='my_balance'))
     try:
 
         # Проверяем, есть ли значение в атрибуте "тестовый период" для данного пользователя
@@ -3592,8 +3613,6 @@ async def update_days(message: Message, state: FSMContext):
         days = int(message.text)  # Assuming the user enters a valid integer for days
         user_data = await state.get_data()
         user_id = user_data.get('user_id', None)
-        print(user_id)
-        print('иииув')
         # Update the database with the new number of days for the user
         conn = sqlite3.connect('my_database.db')
         cursor = conn.cursor()
@@ -3610,6 +3629,9 @@ async def update_days(message: Message, state: FSMContext):
         conn.close()
 
         await message.reply(f"Успешно обновлено количество дней до {days} для пользователя {user_id}")
+        keyboard = types.InlineKeyboardMarkup()
+        keyboard.add(types.InlineKeyboardButton(text='Назад',callback_data='change_tarif'))
+        await bot.send_message(message.chat.id,'Выберите опцию',reply_markup=keyboard)
     except ValueError:
         await message.reply("Пожалуйста, введите целое число для количества дней.")
 
@@ -3769,7 +3791,6 @@ async def handle_text(message: types.Message):
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith(('view-chat-group^','send-message-group^')))
 async def action_callback(callback_query: types.CallbackQuery,state: FSMContext):
-    print()
     action_data = callback_query.data
     action_data = callback_query.data.split('^')
     action = action_data[0]
@@ -3862,6 +3883,17 @@ async def action_callback(callback_query: types.CallbackQuery,state: FSMContext)
     
 
 
+@dp.callback_query_handler(lambda callback_query: callback_query.data == 'my_menu')
+async def send_group(callback_query: types.CallbackQuery):
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(types.InlineKeyboardButton(text='📋 Проверить статус подписки',callback_data='check_vip'))
+    keyboard.add(types.InlineKeyboardButton(text='💳 Проверить платежи', callback_data='check_money'))
+    keyboard.add(types.InlineKeyboardButton(text='➕ Подключить аккаунт',callback_data='check_connection'))
+    keyboard.add(types.InlineKeyboardButton(text='🔌 Реф ссылка',callback_data='check_ref'))
+    keyboard.add(types.InlineKeyboardButton(text="🤖 К боту", url='https://t.me/tiqavito_bot'))
+    await bot.answer_callback_query(callback_query_id=callback_query.id)  # Отмечаем кнопку как обработанную
+
+    await bot.send_message(callback_query.message.chat.id,text='Выберите опцию',reply_markup=keyboard)
 
 
 
@@ -3966,11 +3998,15 @@ async def get_unread_messages(chat_id):
                         f"Автор товара: {markdown.escape_md(client_name)}\n"
                         f"Город: {markdown.escape_md(city)}\n"
                         f"Клиент: {markdown.escape_md(author_name)}\n\n"
-                        f"Текст сообщения:\n{markdown.escape_md(last_message_text)}\n\n"
+                        f"✏️ Текст сообщения:\n{markdown.escape_md(last_message_text)}\n\n"
                     )
                     
                     keyboard = types.InlineKeyboardMarkup()
                     keyboard.add(types.InlineKeyboardButton(text="📨Отправить сообщение", callback_data=f'send-message-group^{ch_id}^{avito_id}'),types.InlineKeyboardButton(text="💬Посмотреть чат", callback_data=f'view-chat-group^{avito_id}^{ch_id}'))
+                    keyboard.add(
+                    types.InlineKeyboardButton(text="🔙 Главное меню", callback_data='my_menu'),
+                    types.InlineKeyboardButton(text="🤖 К боту", url='https://t.me/tiqavito_bot')
+                    )
                     await bot.send_message(chat_id, text=response_message,parse_mode=types.ParseMode.MARKDOWN,reply_markup=keyboard)
     except:
         pass
@@ -3984,7 +4020,6 @@ async def background_task(chat_id):
 async def process_msgs_data(token, avito_id, data, current_day_ru):
     unread_messages = await get_unread_messagef_avito(token=token, user_id=avito_id)
     available_days = [day.strip() for day in data[4].split(',')]
-    
     if current_day_ru in available_days and unread_messages:
         for message in unread_messages.get("chats", []):
             chat_id = message['id']
@@ -3994,14 +4029,15 @@ async def process_msgs_data(token, avito_id, data, current_day_ru):
             try:
                 lst_messages =  await get_lst_messages_v3_async(token=token, user_id=avito_id, chat_id=chat_id)
                 response_text = find_matching_answer()
+
             except Exception as e:
                 print(f"Error in answer: {e}")
                 continue
             
             
-            if response_text and len(lst_messages["messages"]) == 1:
+            if response_text and len(lst_messages["messages"]) == 1 and len(lst_messages)<=2 and len(lst_messages)>0:
                 try:
-                    await send_message(chat_id=chat_id, user_id=avito_id, text=response_text, token=token)
+                    await send_message(chat_id=chat_id, user_id=avito_id, text=response_text[-1], token=token)
                     await mark_chat_as_read(avito_id, chat_id, token=token)
                 except Exception as e:
                     print(f"Error sending message: {e}")
@@ -4068,10 +4104,15 @@ async def send_unread_triggers():
                     for message in unread_messages["chats"]:
                         user_text = message["last_message"]["content"]["text"]
                         trigger, response_text = find_matching_trigger(user_text)
+                        name_ob = message['context']['value']['title']
+                        link_ob = message['context']['value']['url']
+                        user_name = message['users'][0]['name']
+                        text = message['last_message']['content'].get('text')
+                        user_link = message['users'][0]['public_user_profile']['url']
                         if trigger and response_text:
                             await send_message(avito_id, message["id"] ,response_text, token)
-                            await mark_chat_as_read(avito_id, chat_id[0], token)
-                            await bot.send_message(chat_id[0], text='Автоматический ответ отправлен')
+                            await mark_chat_as_read(avito_id, chat_id[1], token)
+                            await bot.send_message(chat_id[1], text=f'✅ Автоматический ответ отправлен\nТовар: <a href = "{link_ob}">{name_ob}</a>\nПользователю: <a href = "{user_link}">{user_name}</a>\n\✏️ Текст сообщения:\n{text} \n\n✅Отправлен автоответ: {response_text}',parse_mode='html')
 
         for data in msgs:
           
@@ -4141,7 +4182,7 @@ async def check_work_msgs():
                     start_time = datetime.datetime.strptime(item[1], '%H:%M').time()
                     end_time = datetime.datetime.strptime(item[2], '%H:%M').time()
                     if start_time <= current_time <= end_time and current_day in item[-2]:
-                        await send_message(chat_id=item[3], user_id=user_id, text=item[-2], token=token)
+                        await send_message(chat_id=item[3], user_id=user_id, text=item[-3], token=token)
                         await mark_chat_as_read(user_id, item[3], token=token)
                         clear_check_work_msgs(item[-1])    
 
@@ -4178,20 +4219,22 @@ async def specific_time():
                         clear_specific_msgs_time(item[2]) 
 
                     else:
-                        print('nooo specific')
+                        pass
         await asyncio.sleep(2)
 
 async def send_request(tg_id, chat_id, paysum):
     markup = types.InlineKeyboardMarkup(row_width=2)
-    accept_button = types.InlineKeyboardButton("Принять", callback_data=f"accept_{tg_id}_{chat_id}_{paysum}")
-    decline_button = types.InlineKeyboardButton("Отказать", callback_data=f"decline_{tg_id}")
+    accept_button = types.InlineKeyboardButton("✅ Принять", callback_data=f"accept_{tg_id}_{chat_id}_{paysum}")
+    decline_button = types.InlineKeyboardButton("🚫 Отказать", callback_data=f"decline_{tg_id}_{chat_id}_{paysum}")
     markup.add(accept_button, decline_button)
     user_name = await bot.get_chat(tg_id)
     conn = sqlite3.connect('my_database.db')
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM money WHERE telegram_id = ?', (tg_id,))
     result = cursor.fetchone()
-    await bot.send_message(admin_ids[0], f"Пользователь @{user_name.username} запросил на вывод {paysum} руб.\nФИО - {result[-3]}\nНомер карты {result[-2]}", reply_markup=markup)
+    for item in admin_ids:
+        card = result[-1]
+        await bot.send_message(item, f"Пользователь @{user_name.username} запросил на вывод {paysum} руб.\n\n👤 ФИО - <code>{result[-2]}</code>\n\n💳 Номер карты <code>{result[-1]}</code>", reply_markup=markup,parse_mode='html')
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith(('accept_', 'decline_')))
 async def handle_response(callback_query: types.CallbackQuery):
@@ -4207,10 +4250,12 @@ async def handle_response(callback_query: types.CallbackQuery):
         await bot.send_message(chat_id=tg_id,text=f'Скоро вам переведут ваши деньги, осталось {float(result[0])-float(paysum)} ₽')
         cursor.execute('UPDATE chats SET money = ? WHERE chat_id = ?', (float(result[0])-float(paysum), chat_id))
         conn.commit()
-        await bot.send_message(chat_id=admin_ids[0],text=f'Отправил пользователю @{user_name.username} согласие на перевод')
+        for item in admin_ids:
+            await bot.send_message(chat_id=item,text=f'Отправил пользователю @{user_name.username} согласие на перевод')
     elif action == 'decline':
         await bot.send_message(chat_id=tg_id,text='Извините, но вам пока отказали в переводе')
-        await bot.send_message(chat_id=admin_ids[0],text=f'Отправил пользователю @{user_name.username} отказ на перевод')
+        for item in admin_ids:
+            await bot.send_message(chat_id=item,text=f'Отправил пользователю @{user_name.username} отказ на перевод')
 
 
 

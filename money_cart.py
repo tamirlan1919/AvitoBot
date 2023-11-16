@@ -1,10 +1,11 @@
 from yoomoney import Quickpay
 import sqlite3
 
+cart = '4100117394518969'
 
 def change_sum(x):
     quickpay = Quickpay(
-                receiver="4100117394518969",
+                receiver=cart,
                 quickpay_form="shop",
                 targets="Покупка на месяц Авито бота",
                 paymentType="SB",
@@ -49,7 +50,7 @@ def get_sum(tg_id):
 
     print(result) 
     quickpay = Quickpay(
-                receiver="4100117394518969",
+                receiver=cart,
                 quickpay_form="shop",
                 targets="Покупка на месяц Авито бота",
                 paymentType="SB",

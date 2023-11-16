@@ -598,3 +598,18 @@ def add_money_to_user(user_id, amount):
     
     conn.commit()
     conn.close()
+
+def calculate_days_to_expiry(end_date_str):
+    # Преобразование строки с датой завершения подписки в объект datetime
+    end_date = datetime.datetime.strptime(end_date_str, "%Y-%m-%d %H:%M:%S")
+
+    # Получение текущей даты и времени
+    current_date = datetime.datetime.now()
+
+    # Рассчет разницы во времени
+    time_difference = end_date - current_date
+
+    # Извлечение количества оставшихся дней
+    days_to_expiry = time_difference.days
+
+    return days_to_expiry

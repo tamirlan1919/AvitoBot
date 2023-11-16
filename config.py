@@ -57,10 +57,10 @@ import sqlite3
 
 def find_matching_trigger(user_text):
     try:
-        conn = sqlite3.connect('my_database.db')  # Замените на имя вашей базы данных
+        conn = sqlite3.connect('my_database.db')  # Replace with your database name
         cursor = conn.cursor()
-        lst = []
-        # Выполните SQL-запрос для получения всех триггеров из базы данных
+
+        # Execute SQL query to retrieve all triggers from the database
         cursor.execute("SELECT trigger, response_text FROM auto_responses")
         all_triggers = cursor.fetchall()
 
@@ -69,14 +69,12 @@ def find_matching_trigger(user_text):
         best_trigger = None
         best_response_text = None
         max_match_length = 0
-        
+
         for trigger, response_text in all_triggers:
-            
             cleaned_trigger = trigger.lower().strip()
-            print(f"Cleaned user text: '{cleaned_user_text}'")
-            print(f"Cleaned trigger: '{cleaned_trigger}'")
-            if cleaned_user_text in cleaned_trigger:
-                print('зашел')
+
+            # Check if any trigger word is in the user's text
+            if any(word in cleaned_user_text for word in cleaned_trigger.split()):
                 match_length = len(cleaned_trigger)
                 if match_length > max_match_length:
                     max_match_length = match_length
